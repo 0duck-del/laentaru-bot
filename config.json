@@ -3333,5 +3333,15 @@
                 ]
             }
         }
+    },
+    "LOTTERY": {
+        "enabled": true,
+        "ticket_price": 10,
+        "draw_interval_seconds": 3600,
+        "starting_pot": 0,
+        "channel_id": 1501257462727311572,
+        "max_tickets_per_purchase": 100,
+        "max_tickets_per_player": 500,
+        "announce_empty_rounds": true
     }
 }
