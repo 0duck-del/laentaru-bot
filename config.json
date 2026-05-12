@@ -1,0 +1,3337 @@
+{
+    "TRAINING_COOLDOWN_MINUTES": 10,
+    "DUEL_DURATION_SECONDS": 30,
+    "DUEL_ROUND_DELAY_SECONDS": 1.5,
+    "BASE_STATS": {
+        "Health": 100,
+        "Durability": 100,
+        "Stamina": 100,
+        "Accuracy": 100
+    },
+    "AFFINITIES": [
+        "Chakra Reserves",
+        "Chakra Control",
+        "Genjutsu",
+        "Taijutsu",
+        "Speed"
+    ],
+    "NATURE_TYPES": [
+        "Lightning",
+        "Fire",
+        "Water",
+        "Earth",
+        "Wind",
+        "Ying",
+        "Yang"
+    ],
+    "AFFINITY_ROLL_BRACKETS": [
+        {
+            "chance_until": 0.5,
+            "min": 1,
+            "max": 2500
+        },
+        {
+            "chance_until": 0.8,
+            "min": 2501,
+            "max": 5000
+        },
+        {
+            "chance_until": 0.95,
+            "min": 5001,
+            "max": 7500
+        },
+        {
+            "chance_until": 0.99,
+            "min": 7501,
+            "max": 9000
+        },
+        {
+            "chance_until": 1.0,
+            "min": 9001,
+            "max": 10000
+        }
+    ],
+    "SKILL_TIERS": [
+        {
+            "min": 12000,
+            "label": "Scale-Breaker"
+        },
+        {
+            "min": 10000,
+            "label": "Mythic"
+        },
+        {
+            "min": 9500,
+            "label": "Legendary"
+        },
+        {
+            "min": 8500,
+            "label": "Elite"
+        },
+        {
+            "min": 7000,
+            "label": "Advanced"
+        },
+        {
+            "min": 5000,
+            "label": "Skilled"
+        },
+        {
+            "min": 2500,
+            "label": "Average"
+        },
+        {
+            "min": 0,
+            "label": "Novice"
+        }
+    ],
+    "KEKKEI_GENKAI": [
+        "Sharingan",
+        "Byakugan",
+        "Wood Release",
+        "Ice Release",
+        "Lava Release",
+        "Shikotsumyaku",
+        "Maddosukin",
+        "Ketsuryugan",
+        "Rinnegan",
+        "Tenseigan",
+        "Boil Release",
+        "Storm Release",
+        "Magnet Release",
+        "Explosion Release",
+        "Scorch Release",
+        "Crystal Release",
+        "Steel Release",
+        "Swift Release",
+        "Dark Release",
+        "Dust Release",
+        "Sage Transformation",
+        "Kurama Genjutsu"
+    ],
+    "CLANS": {
+        "Civilian": {
+            "weight": 35,
+            "affinity_bonus": {},
+            "kekkei_chance": 1,
+            "possible_kekkei": [],
+            "stat_bonus": {},
+            "skill_bonus": {}
+        },
+        "Uchiha": {
+            "weight": 8,
+            "affinity_bonus": {
+                "Genjutsu": 1200,
+                "Chakra Control": 600,
+                "Speed": 350
+            },
+            "kekkei_chance": 18,
+            "possible_kekkei": [
+                "Sharingan"
+            ],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Genjutsu": 1200,
+                "Chakra Control": 600,
+                "Speed": 350
+            }
+        },
+        "Hyuga": {
+            "weight": 8,
+            "affinity_bonus": {
+                "Taijutsu": 1000,
+                "Chakra Control": 900,
+                "Speed": 300
+            },
+            "kekkei_chance": 18,
+            "possible_kekkei": [
+                "Byakugan"
+            ],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Taijutsu": 1000,
+                "Chakra Control": 900,
+                "Speed": 300
+            }
+        },
+        "Senju": {
+            "weight": 7,
+            "affinity_bonus": {
+                "Chakra Reserves": 1300,
+                "Chakra Control": 500,
+                "Taijutsu": 350
+            },
+            "kekkei_chance": 10,
+            "possible_kekkei": [
+                "Wood Release"
+            ],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Chakra Reserves": 1300,
+                "Chakra Control": 500,
+                "Taijutsu": 350
+            }
+        },
+        "Nara": {
+            "weight": 10,
+            "affinity_bonus": {
+                "Chakra Control": 900,
+                "Genjutsu": 450
+            },
+            "kekkei_chance": 3,
+            "possible_kekkei": [],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Chakra Control": 900,
+                "Genjutsu": 450
+            }
+        },
+        "Akimichi": {
+            "weight": 10,
+            "affinity_bonus": {
+                "Taijutsu": 700,
+                "Chakra Reserves": 700,
+                "Durability": 500
+            },
+            "kekkei_chance": 3,
+            "possible_kekkei": [],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Taijutsu": 700,
+                "Chakra Reserves": 700,
+                "Durability": 500
+            }
+        },
+        "Yamanaka": {
+            "weight": 10,
+            "affinity_bonus": {
+                "Genjutsu": 900,
+                "Chakra Control": 600
+            },
+            "kekkei_chance": 3,
+            "possible_kekkei": [],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Genjutsu": 900,
+                "Chakra Control": 600
+            }
+        },
+        "Aburame": {
+            "weight": 7,
+            "affinity_bonus": {
+                "Chakra Control": 700,
+                "Chakra Reserves": 400
+            },
+            "kekkei_chance": 4,
+            "possible_kekkei": [],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Chakra Control": 700,
+                "Chakra Reserves": 400
+            }
+        },
+        "Inuzuka": {
+            "weight": 8,
+            "affinity_bonus": {
+                "Speed": 900,
+                "Taijutsu": 650
+            },
+            "kekkei_chance": 3,
+            "possible_kekkei": [],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Speed": 900,
+                "Taijutsu": 650
+            }
+        },
+        "Kaguya": {
+            "weight": 3,
+            "affinity_bonus": {
+                "Taijutsu": 1300,
+                "Durability": 800
+            },
+            "kekkei_chance": 20,
+            "possible_kekkei": [
+                "Shikotsumyaku"
+            ],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Taijutsu": 1300,
+                "Durability": 800
+            }
+        },
+        "Haku Clan": {
+            "weight": 4,
+            "affinity_bonus": {
+                "Speed": 700,
+                "Chakra Control": 700
+            },
+            "kekkei_chance": 18,
+            "possible_kekkei": [
+                "Ice Release"
+            ],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Speed": 700,
+                "Chakra Control": 700
+            }
+        },
+        "Tsuchi": {
+            "weight": 0.0001,
+            "affinity_bonus": {
+                "Chakra Reserves": 15000,
+                "Chakra Control": 15000,
+                "Genjutsu": 15000,
+                "Taijutsu": 15000,
+                "Speed": 15000
+            },
+            "kekkei_chance": 100,
+            "possible_kekkei": [
+                "Maddosukin"
+            ],
+            "special_traits": {
+                "all_natures": true,
+                "damage_multiplier": 3.5,
+                "damage_reduction": 0.7,
+                "passive_regeneration": true,
+                "immune_to_status": true
+            },
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Chakra Reserves": 15000,
+                "Chakra Control": 15000,
+                "Genjutsu": 15000,
+                "Taijutsu": 15000,
+                "Speed": 15000
+            }
+        },
+        "Uzumaki": {
+            "weight": 6,
+            "affinity_bonus": {
+                "Chakra Reserves": 1400,
+                "Durability": 350
+            },
+            "kekkei_chance": 8,
+            "possible_kekkei": [
+                "Adamantine Chains"
+            ],
+            "stat_bonus": {
+                "Health": 60
+            },
+            "skill_bonus": {
+                "Chakra Reserves": 1400
+            }
+        },
+        "Sarutobi": {
+            "weight": 7,
+            "affinity_bonus": {
+                "Chakra Control": 650,
+                "Taijutsu": 450,
+                "Genjutsu": 300
+            },
+            "kekkei_chance": 3,
+            "possible_kekkei": [],
+            "stat_bonus": {
+                "Accuracy": 20
+            },
+            "skill_bonus": {
+                "Chakra Control": 650,
+                "Taijutsu": 450
+            }
+        },
+        "Hatake": {
+            "weight": 5,
+            "affinity_bonus": {
+                "Speed": 850,
+                "Chakra Control": 650,
+                "Taijutsu": 350
+            },
+            "kekkei_chance": 3,
+            "possible_kekkei": [],
+            "stat_bonus": {
+                "Accuracy": 35
+            },
+            "skill_bonus": {
+                "Speed": 850,
+                "Chakra Control": 650
+            }
+        },
+        "Lee Clan": {
+            "weight": 5,
+            "affinity_bonus": {
+                "Taijutsu": 1500,
+                "Speed": 500
+            },
+            "kekkei_chance": 1,
+            "possible_kekkei": [],
+            "stat_bonus": {
+                "Stamina": 80
+            },
+            "skill_bonus": {
+                "Taijutsu": 1500,
+                "Speed": 500
+            }
+        },
+        "Terumi": {
+            "weight": 3,
+            "affinity_bonus": {
+                "Chakra Control": 750,
+                "Chakra Reserves": 550
+            },
+            "kekkei_chance": 22,
+            "possible_kekkei": [
+                "Lava Release",
+                "Boil Release"
+            ],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Chakra Control": 750,
+                "Chakra Reserves": 550
+            }
+        },
+        "Yuki": {
+            "weight": 4,
+            "affinity_bonus": {
+                "Speed": 700,
+                "Chakra Control": 650
+            },
+            "kekkei_chance": 20,
+            "possible_kekkei": [
+                "Ice Release"
+            ],
+            "stat_bonus": {
+                "Accuracy": 25
+            },
+            "skill_bonus": {
+                "Speed": 700,
+                "Chakra Control": 650
+            }
+        },
+        "Hoshigaki": {
+            "weight": 3,
+            "affinity_bonus": {
+                "Chakra Reserves": 1200,
+                "Taijutsu": 600
+            },
+            "kekkei_chance": 5,
+            "possible_kekkei": [],
+            "stat_bonus": {
+                "Health": 80,
+                "Stamina": 40
+            },
+            "skill_bonus": {
+                "Chakra Reserves": 1200,
+                "Taijutsu": 600
+            }
+        },
+        "Jugo Clan": {
+            "weight": 2,
+            "affinity_bonus": {
+                "Taijutsu": 900,
+                "Chakra Reserves": 650
+            },
+            "kekkei_chance": 25,
+            "possible_kekkei": [
+                "Sage Transformation"
+            ],
+            "stat_bonus": {
+                "Durability": 70,
+                "Stamina": 50
+            },
+            "skill_bonus": {
+                "Taijutsu": 900,
+                "Chakra Reserves": 650
+            }
+        },
+        "Kamizuru": {
+            "weight": 4,
+            "affinity_bonus": {
+                "Chakra Control": 650,
+                "Genjutsu": 350
+            },
+            "kekkei_chance": 6,
+            "possible_kekkei": [],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Chakra Control": 650,
+                "Genjutsu": 350
+            }
+        },
+        "Kurama": {
+            "weight": 3,
+            "affinity_bonus": {
+                "Genjutsu": 1600,
+                "Chakra Control": 450
+            },
+            "kekkei_chance": 18,
+            "possible_kekkei": [
+                "Kurama Genjutsu"
+            ],
+            "stat_bonus": {},
+            "skill_bonus": {
+                "Genjutsu": 1600,
+                "Chakra Control": 450
+            }
+        },
+        "Iburi": {
+            "weight": 2,
+            "affinity_bonus": {
+                "Speed": 900,
+                "Chakra Control": 500
+            },
+            "kekkei_chance": 16,
+            "possible_kekkei": [
+                "Smoke Transformation"
+            ],
+            "stat_bonus": {
+                "Accuracy": 20
+            },
+            "skill_bonus": {
+                "Speed": 900,
+                "Chakra Control": 500
+            }
+        },
+        "Chinoike": {
+            "weight": 2,
+            "affinity_bonus": {
+                "Genjutsu": 1000,
+                "Chakra Control": 700
+            },
+            "kekkei_chance": 22,
+            "possible_kekkei": [
+                "Ketsuryugan"
+            ],
+            "stat_bonus": {
+                "Accuracy": 40
+            },
+            "skill_bonus": {
+                "Genjutsu": 1000,
+                "Chakra Control": 700
+            }
+        }
+    },
+    "ITEMS": {
+        "Hope of Tsuchi": {
+            "rarity": "Legendary",
+            "effect": "Rerolls",
+            "boost": 3,
+            "description": "A mysterious fragment tied to the Tsuchi bloodline. Grants 3 additional rerolls."
+        },
+        "Kunai": {
+            "rarity": "Common",
+            "effect": "Durability",
+            "boost": 5
+        },
+        "Shuriken": {
+            "rarity": "Common",
+            "effect": "Stamina",
+            "boost": 5
+        },
+        "Smoke Bomb": {
+            "rarity": "Uncommon",
+            "effect": "Speed",
+            "boost": 10
+        },
+        "Basic Chakra Pill": {
+            "rarity": "Uncommon",
+            "effect": "Chakra Reserves",
+            "boost": 10
+        },
+        "Training Weights": {
+            "rarity": "Rare",
+            "effect": "Stamina",
+            "boost": 20
+        },
+        "Scroll Fragment": {
+            "rarity": "Rare",
+            "effect": "Chakra Control",
+            "boost": 20
+        },
+        "Forbidden Scroll Page": {
+            "rarity": "Legendary",
+            "effect": "Health",
+            "boost": 50
+        },
+        "Tailed Beast Chakra Fragment": {
+            "rarity": "Mythic",
+            "effect": "Chakra Reserves",
+            "boost": 150
+        },
+        "Soldier Pill": {
+            "rarity": "Common",
+            "effect": "Stamina",
+            "boost": 8
+        },
+        "Bandage Wrap": {
+            "rarity": "Common",
+            "effect": "Health",
+            "boost": 8
+        },
+        "Focus Tag": {
+            "rarity": "Uncommon",
+            "effect": "Accuracy",
+            "boost": 12
+        },
+        "Chakra Ink": {
+            "rarity": "Uncommon",
+            "effect": "Chakra Control",
+            "boost": 15
+        },
+        "Weighted Gi": {
+            "rarity": "Rare",
+            "effect": "Taijutsu",
+            "boost": 35
+        },
+        "Mirror Lens": {
+            "rarity": "Rare",
+            "effect": "Accuracy",
+            "boost": 30
+        },
+        "Sealing Chain Fragment": {
+            "rarity": "Epic",
+            "effect": "Chakra Reserves",
+            "boost": 55
+        },
+        "Nature Catalyst": {
+            "rarity": "Epic",
+            "effect": "Chakra Control",
+            "boost": 55
+        },
+        "Dojutsu Lens": {
+            "rarity": "Legendary",
+            "effect": "Accuracy",
+            "boost": 90
+        },
+        "Bloodline Catalyst": {
+            "rarity": "Legendary",
+            "effect": "Chakra Control",
+            "boost": 100
+        },
+        "Evolution Shard": {
+            "rarity": "Legendary",
+            "effect": "Chakra Reserves",
+            "boost": 75
+        },
+        "Ancient Kekkei Relic": {
+            "rarity": "Mythic",
+            "effect": "Chakra Control",
+            "boost": 180
+        },
+        "Six Paths Fragment": {
+            "rarity": "Mythic",
+            "effect": "Accuracy",
+            "boost": 200
+        }
+    },
+    "ITEM_DROP_TABLE": [
+        {
+            "chance_until": 0.52,
+            "items": [
+                "Kunai",
+                "Shuriken",
+                "Soldier Pill",
+                "Bandage Wrap"
+            ]
+        },
+        {
+            "chance_until": 0.82,
+            "items": [
+                "Smoke Bomb",
+                "Basic Chakra Pill",
+                "Focus Tag",
+                "Chakra Ink"
+            ]
+        },
+        {
+            "chance_until": 0.96,
+            "items": [
+                "Training Weights",
+                "Scroll Fragment",
+                "Weighted Gi",
+                "Mirror Lens"
+            ]
+        },
+        {
+            "chance_until": 0.995,
+            "items": [
+                "Forbidden Scroll Page",
+                "Sealing Chain Fragment",
+                "Nature Catalyst",
+                "Dojutsu Lens",
+                "Bloodline Catalyst"
+            ]
+        },
+        {
+            "chance_until": 1.0,
+            "items": [
+                "Tailed Beast Chakra Fragment",
+                "Ancient Kekkei Relic",
+                "Six Paths Fragment"
+            ]
+        }
+    ],
+    "RANKS": [
+        "Academy Student",
+        "Genin",
+        "Chunin",
+        "Special Jonin",
+        "Jonin",
+        "Anbu",
+        "Sannin-Level",
+        "Kage-Level"
+    ],
+    "LEVELS_PER_RANK": 10,
+    "XP_BASE": 100,
+    "XP_EXPONENT": 1.35,
+    "SKILL_SCORE": {
+        "level_multiplier_per_level": 0.08,
+        "kekkei_bonus": 10000,
+        "non_civilian_clan_bonus": 500,
+        "extra_chakra_nature_bonus": 750
+    },
+    "LEVEL_UP": {
+        "stat_gain_min": 3,
+        "stat_gain_max": 8,
+        "affinity_gain_min": 10,
+        "affinity_gain_max": 40,
+        "normal_affinity_cap": 10000,
+        "scale_break_chance": 1,
+        "scale_break_roll_max": 100,
+        "scale_break_gain_min": 50,
+        "scale_break_gain_max": 250,
+        "chakra_nature_unlock_levels": [
+            15,
+            30,
+            50,
+            75
+        ]
+    },
+    "TRAINING": {
+        "xp_min": 25,
+        "xp_max": 75,
+        "stat_gain_min": 1,
+        "stat_gain_max": 5,
+        "item_drop_chance": 1,
+        "item_drop_roll_max": 5
+    },
+    "PVP": {
+        "min_hit_chance": 0.55,
+        "max_hit_chance": 0.92,
+        "base_hit_chance": 0.72,
+        "power_ratio_hit_weight": 0.1,
+        "accuracy_bonus_divisor": 100000,
+        "glancing_blow_chance": 0.65,
+        "glancing_damage_multiplier": 0.35,
+        "base_damage_min": 10,
+        "base_damage_max": 24,
+        "minimum_damage": 4,
+        "basic_taijutsu_divisor": 850,
+        "chakra_scaling_divisor": 1800,
+        "heavy_scaling_divisor": 1600,
+        "counter_scaling_divisor": 1700,
+        "heavy_bonus_min": 8,
+        "heavy_bonus_max": 18,
+        "counter_bonus_min": 4,
+        "counter_bonus_max": 12,
+        "defense_reduction_divisor": 1500,
+        "power_bonus_divisor": 2000,
+        "power_bonus_min": -8,
+        "power_bonus_max": 25,
+        "crit_chance": 0.08,
+        "stronger_crit_bonus": 0.04,
+        "crit_multiplier_min": 1.4,
+        "crit_multiplier_max": 1.8,
+        "block_base_chance": 0.05,
+        "block_durability_divisor": 25000,
+        "block_max_chance": 0.22,
+        "block_damage_multiplier": 0.55,
+        "sudden_death_stronger_win_chance": 0.75,
+        "duel_xp_min": 50,
+        "duel_xp_max": 110,
+        "attack_type_weights": {
+            "basic": 40,
+            "chakra": 25,
+            "heavy": 20,
+            "counter": 15
+        },
+        "attack_type_bonus_caps": {
+            "chakra": 20,
+            "heavy": 15,
+            "counter": 10
+        },
+        "attack_type_bonus_divisors": {
+            "chakra": 700,
+            "heavy": 800,
+            "counter": 1000
+        },
+        "trait_scaling": {
+            "Health": {
+                "hp_multiplier": 1.0
+            },
+            "Durability": {
+                "damage_reduction_divisor": 1200,
+                "block_chance_divisor": 18000
+            },
+            "Stamina": {
+                "damage_reduction_divisor": 1800,
+                "long_fight_bonus_divisor": 25000
+            },
+            "Chakra Reserves": {
+                "chakra_damage_divisor": 1300,
+                "heavy_damage_divisor": 1800
+            },
+            "Chakra Control": {
+                "chakra_damage_divisor": 1400,
+                "hit_bonus_divisor": 85000,
+                "crit_bonus_divisor": 150000
+            },
+            "Genjutsu": {
+                "dodge_penalty_divisor": 120000,
+                "crit_bonus_divisor": 130000
+            },
+            "Taijutsu": {
+                "basic_damage_divisor": 700,
+                "heavy_damage_divisor": 1200
+            },
+            "Speed": {
+                "hit_bonus_divisor": 90000,
+                "counter_damage_divisor": 1300,
+                "dodge_bonus_divisor": 100000
+            }
+        }
+    },
+    "EVENTS": {
+        "shinobi": {
+            "enemy_names": [
+                "Rogue Mist Shinobi",
+                "Hidden Sound Assassin",
+                "Missing-Nin",
+                "Elite Leaf Traitor",
+                "Akatsuki Scout",
+                "S-Rank Bounty Hunter",
+                "Sound Village Executioner"
+            ],
+            "base_hp": 180,
+            "hp_per_difficulty": 90,
+            "base_power": 5200,
+            "power_per_difficulty": 1700,
+            "base_xp": 125,
+            "xp_per_difficulty": 65,
+            "base_item_reward_chance": 28,
+            "item_reward_chance_per_difficulty": 6,
+            "max_item_reward_chance": 85,
+            "base_win_chance": 0.46,
+            "power_difference_weight": 0.28,
+            "min_win_chance": 0.18,
+            "max_win_chance": 0.86
+        },
+        "beast": {
+            "base_hp": 380,
+            "hp_per_difficulty": 175,
+            "base_power": 10500,
+            "power_per_difficulty": 2800,
+            "base_xp": 350,
+            "xp_per_difficulty": 150,
+            "base_item_reward_chance": 60,
+            "item_reward_chance_per_difficulty": 6,
+            "max_item_reward_chance": 95,
+            "base_win_chance": 0.24,
+            "power_difference_weight": 0.26,
+            "min_win_chance": 0.05,
+            "max_win_chance": 0.68
+        }
+    },
+    "NATURE_ROLL_WEIGHTS": {
+        "Lightning": 24,
+        "Fire": 24,
+        "Water": 24,
+        "Earth": 24,
+        "Wind": 24,
+        "Ying": 2,
+        "Yang": 2
+    },
+    "TRAINING_KEKKEI": {
+        "enabled": true,
+        "general_roll_max": 100,
+        "general_success_value": 1,
+        "dojutsu_roll_max": 150,
+        "dojutsu_success_value": 1,
+        "general_pool": [
+            "Wood Release",
+            "Ice Release",
+            "Lava Release",
+            "Shikotsumyaku",
+            "Boil Release",
+            "Storm Release",
+            "Magnet Release",
+            "Explosion Release",
+            "Scorch Release",
+            "Crystal Release",
+            "Steel Release",
+            "Swift Release",
+            "Dark Release",
+            "Sage Transformation",
+            "Kurama Genjutsu",
+            "Adamantine Chains",
+            "Smoke Transformation"
+        ],
+        "dojutsu_pool": [
+            "Sharingan",
+            "Byakugan",
+            "Ketsuryugan"
+        ]
+    },
+    "SHARINGAN": {
+        "enabled": true,
+        "training_level_chance": 4,
+        "fight_level_chance": 8,
+        "roll_max": 100,
+        "levels": [
+            "One Tomoe Sharingan",
+            "Two Tomoe Sharingan",
+            "Three Tomoe Sharingan",
+            "Mangekyo Sharingan",
+            "Eternal Mangekyo Sharingan"
+        ],
+        "max_level_index": 3,
+        "skill_bonus_per_level": 750,
+        "genjutsu_bonus_per_level": 250,
+        "chakra_control_bonus_per_level": 150,
+        "speed_bonus_per_level": 100
+    },
+    "RANDOM_EVENTS": {
+        "enabled": true,
+        "channel_id": 1501257462727311572,
+        "interval_seconds": 3600,
+        "event_duration_seconds": 120,
+        "weighted_events": {
+            "xp": 40,
+            "shinobi": 35,
+            "beast": 10,
+            "cursemark": 15
+        },
+        "xp_values": [
+            100,
+            150,
+            200,
+            250,
+            300
+        ],
+        "shinobi_difficulties": [
+            1,
+            2,
+            3,
+            4
+        ],
+        "beast_difficulties": [
+            1,
+            2,
+            3
+        ]
+    },
+    "CURSE_MARK": {
+        "enabled": true,
+        "duration_hours": 24,
+        "buff_multiplier": 1.1,
+        "debuff_multiplier": 0.9,
+        "buff_chance": 50,
+        "debuff_chance": 50,
+        "announce_channel_id": 1501257462727311572,
+        "outcomes": {
+            "empowered": {
+                "name": "Empowered Curse Mark",
+                "weight": 45,
+                "multiplier": 1.1,
+                "description": "The seal stabilizes and temporarily increases the player's combat skill."
+            },
+            "unstable": {
+                "name": "Unstable Curse Mark",
+                "weight": 35,
+                "multiplier": 0.9,
+                "description": "The seal rejects the user's chakra and temporarily reduces combat skill."
+            },
+            "berserk": {
+                "name": "Berserk Curse Mark",
+                "weight": 15,
+                "multiplier": 1.18,
+                "description": "The seal erupts violently, giving a stronger temporary power spike."
+            },
+            "drained": {
+                "name": "Drained Curse Mark",
+                "weight": 5,
+                "multiplier": 0.82,
+                "description": "The seal consumes too much chakra, causing a harsher temporary penalty."
+            }
+        }
+    },
+    "DEVELOPER_IDS": [
+        457651782689226754,
+        923038842267766805,
+        806641612268371989
+    ],
+    "VILLAGES": {
+        "Hidden Leaf Village": {
+            "description": "Balanced growth, steady training, and flexible builds.",
+            "training_xp_bonus": 10,
+            "skill_bonus": 275
+        },
+        "Hidden Sand Village": {
+            "description": "Defensive village focused on durability and survival.",
+            "training_xp_bonus": 9,
+            "skill_bonus": 285
+        },
+        "Hidden Mist Village": {
+            "description": "Combat-focused village with aggressive fight growth.",
+            "training_xp_bonus": 8,
+            "skill_bonus": 300
+        },
+        "Hidden Cloud Village": {
+            "description": "Fast-paced village built around speed and chakra pressure.",
+            "training_xp_bonus": 10,
+            "skill_bonus": 290
+        },
+        "Hidden Stone Village": {
+            "description": "Consistent village focused on toughness and stable scaling.",
+            "training_xp_bonus": 9,
+            "skill_bonus": 295
+        },
+        "Hidden Rain Village": {
+            "description": "Control-focused village with strong tactical growth.",
+            "training_xp_bonus": 11,
+            "skill_bonus": 260
+        },
+        "Hidden Grass Village": {
+            "description": "Flexible village with strong training efficiency.",
+            "training_xp_bonus": 12,
+            "skill_bonus": 245
+        },
+        "Hidden Waterfall Village": {
+            "description": "Rare village with balanced nature growth and endurance.",
+            "training_xp_bonus": 10,
+            "skill_bonus": 270
+        },
+        "Hidden Sound Village": {
+            "description": "Experimental village focused on volatile combat builds.",
+            "training_xp_bonus": 8,
+            "skill_bonus": 305
+        },
+        "Land of Iron": {
+            "description": "Samurai-aligned region focused on stamina, discipline, and accuracy.",
+            "training_xp_bonus": 9,
+            "skill_bonus": 280
+        }
+    },
+    "JUTSU": {
+        "Tenten Slap": {
+            "type": "Taijutsu",
+            "description": "A weak slap from Tenten (Offscreen). Mostly disrespect, barely damage.",
+            "chakra_cost": 1,
+            "base_power": 1,
+            "scaling": null,
+            "requirements": {
+                "level": 1
+            }
+        },
+        "Yang Vital Surge": {
+            "type": "Ninjutsu",
+            "description": "A Yang Release technique that floods the body with life-force, restoring vitality while empowering attacks.",
+            "chakra_cost": 55,
+            "base_power": 45,
+            "scaling": "Chakra Reserves",
+            "scaling_divisor": 150,
+            "requirements": {
+                "level": 3,
+                "chakra_nature": "Yang"
+            },
+            "status_effect": {
+                "type": "regen",
+                "chance": 80,
+                "turns": 3,
+                "damage": 8
+            }
+        },
+        "Tsuchi Maddosurappu": {
+            "type": "Forbidden Technique",
+            "description": "A catastrophic forbidden technique wielded only by the Tsuchi bloodline. The user manifests overwhelming chakra pressure that crushes the battlefield itself.",
+            "chakra_cost": 5,
+            "base_power": 99999,
+            "scaling": "Chakra Reserves",
+            "scaling_divisor": 1,
+            "requirements": {
+                "level": 999,
+                "clan": "Tsuchi",
+                "kekkei_genkai": "Maddosukin",
+                "hidden": true,
+                "unlockable": false
+            },
+            "status_effect": {
+                "type": "annihilation",
+                "chance": 100,
+                "turns": 5,
+                "damage": 9999
+            },
+            "special_effects": {
+                "ignore_defense": true,
+                "ignore_block": true,
+                "cannot_miss": true,
+                "instant_kill_chance": 65,
+                "drain_enemy_chakra": 500,
+                "self_heal_percent": 50
+            }
+        },
+        "Fireball Jutsu": {
+            "type": "Ninjutsu",
+            "description": "A classic fire-style attack that scales with Chakra Control.",
+            "chakra_cost": 55,
+            "base_power": 50,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 150,
+            "requirements": {
+                "level": 3,
+                "chakra_nature": "Fire"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 25,
+                "turns": 3,
+                "damage": 5
+            }
+        },
+        "Water Prison Jutsu": {
+            "type": "Ninjutsu",
+            "description": "A control-based water technique that scales with Chakra Control.",
+            "chakra_cost": 55,
+            "base_power": 55,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 150,
+            "requirements": {
+                "level": 5,
+                "chakra_nature": "Water"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 25,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Lightning Blade": {
+            "type": "Ninjutsu",
+            "description": "A high-damage lightning technique that scales with Speed.",
+            "chakra_cost": 55,
+            "base_power": 220,
+            "scaling": "Speed",
+            "scaling_divisor": 100,
+            "requirements": {
+                "level": 15,
+                "chakra_nature": "Lightning"
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 40,
+                "turns": 3,
+                "damage": 10
+            }
+        },
+        "Shadow Possession": {
+            "type": "Clan Technique",
+            "description": "A Nara clan control technique that scales with Genjutsu.",
+            "chakra_cost": 55,
+            "base_power": 160,
+            "scaling": "Genjutsu",
+            "scaling_divisor": 100,
+            "requirements": {
+                "level": 10,
+                "clan": "Nara"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 55,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Gentle Fist": {
+            "type": "Taijutsu",
+            "description": "A Hyuga technique that scales with Taijutsu.",
+            "chakra_cost": 55,
+            "base_power": 170,
+            "scaling": "Taijutsu",
+            "scaling_divisor": 95,
+            "requirements": {
+                "level": 8,
+                "clan": "Hyuga",
+                "kekkei_genkai": "Byakugan"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 25,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Great Fireball Jutsu": {
+            "type": "Clan Technique",
+            "description": "An Uchiha fire technique that scales with Chakra Control.",
+            "chakra_cost": 55,
+            "base_power": 200,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 95,
+            "requirements": {
+                "level": 10,
+                "clan": "Uchiha"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 45,
+                "turns": 3,
+                "damage": 12
+            }
+        },
+        "Wood Dragon Jutsu": {
+            "type": "Kekkei Genkai",
+            "description": "A powerful Wood Release technique.",
+            "chakra_cost": 55,
+            "base_power": 340,
+            "scaling": "Chakra Reserves",
+            "scaling_divisor": 85,
+            "requirements": {
+                "level": 25,
+                "kekkei_genkai": "Wood Release"
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 45,
+                "turns": 3,
+                "damage": 14
+            }
+        },
+        "Fire Spark Jutsu": {
+            "type": "Basic Ninjutsu",
+            "description": "A beginner Fire Release technique that launches a quick burst of flame.",
+            "chakra_cost": 38,
+            "base_power": 52,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 160,
+            "requirements": {
+                "level": 3,
+                "chakra_nature": "Fire"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 18,
+                "turns": 2,
+                "damage": 4
+            }
+        },
+        "Water Bullet Jutsu": {
+            "type": "Basic Ninjutsu",
+            "description": "A beginner Water Release technique that fires a compressed water shot.",
+            "chakra_cost": 38,
+            "base_power": 50,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 165,
+            "requirements": {
+                "level": 3,
+                "chakra_nature": "Water"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 10,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Earth Shard Jutsu": {
+            "type": "Basic Ninjutsu",
+            "description": "A beginner Earth Release technique that hurls sharp stone fragments.",
+            "chakra_cost": 38,
+            "base_power": 58,
+            "scaling": "Durability",
+            "scaling_divisor": 170,
+            "requirements": {
+                "level": 3,
+                "chakra_nature": "Earth"
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 15,
+                "turns": 2,
+                "damage": 3
+            }
+        },
+        "Wind Cutter Jutsu": {
+            "type": "Basic Ninjutsu",
+            "description": "A beginner Wind Release technique that sends a slicing gust forward.",
+            "chakra_cost": 38,
+            "base_power": 50,
+            "scaling": "Speed",
+            "scaling_divisor": 155,
+            "requirements": {
+                "level": 3,
+                "chakra_nature": "Wind"
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 14,
+                "turns": 2,
+                "damage": 3
+            }
+        },
+        "Lightning Needle Jutsu": {
+            "type": "Basic Ninjutsu",
+            "description": "A beginner Lightning Release technique that shocks the target with focused chakra.",
+            "chakra_cost": 38,
+            "base_power": 54,
+            "scaling": "Speed",
+            "scaling_divisor": 150,
+            "requirements": {
+                "level": 3,
+                "chakra_nature": "Lightning"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 12,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Ying Mirage Jutsu": {
+            "type": "Basic Genjutsu",
+            "description": "A beginner Ying technique that creates a brief illusion and makes the enemy less accurate.",
+            "chakra_cost": 38,
+            "base_power": 45,
+            "scaling": "Genjutsu",
+            "scaling_divisor": 170,
+            "requirements": {
+                "level": 3,
+                "chakra_nature": "Ying"
+            },
+            "status_effect": {
+                "type": "confused",
+                "chance": 22,
+                "turns": 2,
+                "damage": 0,
+                "miss_penalty": 0.1
+            }
+        },
+        "Yang Pulse Jutsu": {
+            "type": "Basic Ninjutsu",
+            "description": "A beginner Yang technique that strikes with life-force chakra and lightly restores the user.",
+            "chakra_cost": 38,
+            "base_power": 48,
+            "scaling": "Chakra Reserves",
+            "scaling_divisor": 165,
+            "requirements": {
+                "level": 3,
+                "chakra_nature": "Yang"
+            },
+            "status_effect": {
+                "type": "regen",
+                "chance": 50,
+                "turns": 2,
+                "damage": 4
+            }
+        },
+        "Phoenix Flame Jutsu": {
+            "type": "Advanced Ninjutsu",
+            "description": "An advanced Fire Release technique that overwhelms the enemy with focused flames.",
+            "chakra_cost": 55,
+            "base_power": 118,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 125,
+            "requirements": {
+                "level": 12,
+                "chakra_nature": "Fire"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 35,
+                "turns": 3,
+                "damage": 8
+            }
+        },
+        "Raging Water Torrent": {
+            "type": "Advanced Ninjutsu",
+            "description": "An advanced Water Release technique that crashes into the opponent with heavy force.",
+            "chakra_cost": 62,
+            "base_power": 112,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 130,
+            "requirements": {
+                "level": 12,
+                "chakra_nature": "Water"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 20,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Stone Coffin Jutsu": {
+            "type": "Advanced Ninjutsu",
+            "description": "An advanced Earth Release technique that crushes the target with dense stone pressure.",
+            "chakra_cost": 68,
+            "base_power": 125,
+            "scaling": "Durability",
+            "scaling_divisor": 135,
+            "requirements": {
+                "level": 12,
+                "chakra_nature": "Earth"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 18,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Vacuum Blade Jutsu": {
+            "type": "Advanced Ninjutsu",
+            "description": "An advanced Wind Release technique that forms a high-speed chakra blade.",
+            "chakra_cost": 64,
+            "base_power": 120,
+            "scaling": "Speed",
+            "scaling_divisor": 120,
+            "requirements": {
+                "level": 12,
+                "chakra_nature": "Wind"
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 30,
+                "turns": 3,
+                "damage": 7
+            }
+        },
+        "Thunder Fang Jutsu": {
+            "type": "Advanced Ninjutsu",
+            "description": "An advanced Lightning Release technique that pierces through defenses with violent chakra.",
+            "chakra_cost": 70,
+            "base_power": 128,
+            "scaling": "Speed",
+            "scaling_divisor": 118,
+            "requirements": {
+                "level": 12,
+                "chakra_nature": "Lightning"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 25,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Ying Nightmare Jutsu": {
+            "type": "Advanced Genjutsu",
+            "description": "An advanced Ying technique that traps the enemy in a stronger illusion and heavily lowers accuracy.",
+            "chakra_cost": 66,
+            "base_power": 100,
+            "scaling": "Genjutsu",
+            "scaling_divisor": 120,
+            "requirements": {
+                "level": 12,
+                "chakra_nature": "Ying"
+            },
+            "status_effect": {
+                "type": "confused",
+                "chance": 40,
+                "turns": 3,
+                "damage": 0,
+                "miss_penalty": 0.18
+            }
+        },
+        "Yang Vital Burst": {
+            "type": "Advanced Ninjutsu",
+            "description": "An advanced Yang technique that damages the enemy while restoring the user's vitality.",
+            "chakra_cost": 68,
+            "base_power": 108,
+            "scaling": "Chakra Reserves",
+            "scaling_divisor": 120,
+            "requirements": {
+                "level": 12,
+                "chakra_nature": "Yang"
+            },
+            "status_effect": {
+                "type": "regen",
+                "chance": 100,
+                "turns": 3,
+                "damage": 8
+            }
+        }
+    },
+    "BOT_VERSION": "1.9.0",
+    "REROLLS_PER_PLAYER": 3,
+    "TOURNAMENT": {
+        "min_win_chance": 0.18,
+        "max_win_chance": 0.82,
+        "winner_xp_min": 125,
+        "winner_xp_max": 250
+    },
+    "TAILED_BEASTS": {
+        "duration_hours": 24,
+        "beasts": [
+            {
+                "name": "One-Tail Shukaku",
+                "tails": 1,
+                "boost_percent": 20
+            },
+            {
+                "name": "Two-Tails Matatabi",
+                "tails": 2,
+                "boost_percent": 25
+            },
+            {
+                "name": "Three-Tails Isobu",
+                "tails": 3,
+                "boost_percent": 30
+            },
+            {
+                "name": "Four-Tails Son Goku",
+                "tails": 4,
+                "boost_percent": 35
+            },
+            {
+                "name": "Five-Tails Kokuo",
+                "tails": 5,
+                "boost_percent": 40
+            },
+            {
+                "name": "Six-Tails Saiken",
+                "tails": 6,
+                "boost_percent": 45
+            },
+            {
+                "name": "Seven-Tails Chomei",
+                "tails": 7,
+                "boost_percent": 50
+            },
+            {
+                "name": "Eight-Tails Gyuki",
+                "tails": 8,
+                "boost_percent": 55
+            },
+            {
+                "name": "Nine-Tails Kurama",
+                "tails": 9,
+                "boost_percent": 60
+            }
+        ]
+    },
+    "ECONOMY": {
+        "currency_name": "Ryo",
+        "starting_ryo": 0,
+        "daily_ryo_min": 75,
+        "daily_ryo_max": 150,
+        "daily_xp_min": 75,
+        "daily_xp_max": 150,
+        "daily_streak_bonus_ryo": 15,
+        "daily_streak_bonus_xp": 20,
+        "daily_streak_cap": 14,
+        "weekly_ryo_min": 450,
+        "weekly_ryo_max": 900,
+        "weekly_xp_min": 500,
+        "weekly_xp_max": 950,
+        "weekly_streak_bonus_ryo": 100,
+        "weekly_streak_bonus_xp": 125,
+        "weekly_streak_cap": 8,
+        "daily_cooldown_hours": 20,
+        "daily_reset_grace_hours": 48,
+        "weekly_cooldown_hours": 156,
+        "weekly_reset_grace_hours": 240,
+        "rare_item_daily_chance": 8,
+        "rare_item_weekly_chance": 35,
+        "training_ryo_min": 15,
+        "training_ryo_max": 45,
+        "combat_win_ryo_min": 35,
+        "combat_win_ryo_max": 90,
+        "event_xp_ryo_min": 20,
+        "event_xp_ryo_max": 60,
+        "shinobi_event_ryo_min": 75,
+        "shinobi_event_ryo_max": 180,
+        "beast_event_ryo_min": 200,
+        "beast_event_ryo_max": 450
+    },
+    "SCALING": {
+        "enabled": true,
+        "level_power_base": 80,
+        "level_power_exponent": 1.18,
+        "stat_power_weights": {
+            "Health": 0.9,
+            "Durability": 1.25,
+            "Stamina": 0.85,
+            "Accuracy": 1.1
+        },
+        "affinity_power_weights": {
+            "Chakra Reserves": 1.05,
+            "Chakra Control": 1.35,
+            "Genjutsu": 1.0,
+            "Taijutsu": 1.25,
+            "Speed": 1.15
+        },
+        "kekkei_power": {
+            "Sharingan": 850,
+            "Byakugan": 750,
+            "Wood Release": 1000,
+            "Ice Release": 800,
+            "Lava Release": 900,
+            "Shikotsumyaku": 950,
+            "Maddosukin": 2500
+        },
+        "clan_power_multiplier": {
+            "Civilian": 1.0,
+            "Uchiha": 1.06,
+            "Hyuga": 1.05,
+            "Senju": 1.06,
+            "Nara": 1.035,
+            "Akimichi": 1.04,
+            "Yamanaka": 1.035,
+            "Aburame": 1.035,
+            "Inuzuka": 1.04,
+            "Kaguya": 1.07,
+            "Haku Clan": 1.055,
+            "Tsuchi": 1.2,
+            "Uzumaki": 1.055,
+            "Sarutobi": 1.035,
+            "Hatake": 1.045,
+            "Lee Clan": 1.045,
+            "Terumi": 1.06,
+            "Yuki": 1.05,
+            "Hoshigaki": 1.05,
+            "Jugo Clan": 1.065,
+            "Kamizuru": 1.035,
+            "Kurama": 1.055,
+            "Iburi": 1.045,
+            "Chinoike": 1.06
+        },
+        "nature_power_per_nature": 120,
+        "rare_nature_bonus": 180,
+        "village_power_multiplier_per_skill_bonus": 8e-05,
+        "rating_softcap_start": 25000,
+        "rating_softcap_strength": 0.55,
+        "duel_hp_base": 100,
+        "duel_hp_per_health": 1.0,
+        "duel_hp_per_durability": 0.35,
+        "duel_chakra_per_reserve": 1.0,
+        "duel_stamina_per_stamina": 1.0,
+        "damage_ratio_min": 0.72,
+        "damage_ratio_max": 1.35,
+        "damage_ratio_strength": 0.34,
+        "damage_softcap_start": 160,
+        "damage_softcap_strength": 0.6,
+        "low_hp_execute_threshold": 0.22,
+        "low_hp_execute_bonus": 1.08,
+        "defender_durability_reduction_cap": 0.32,
+        "same_tier_min_damage_percent": 0.06,
+        "global_base_power": 100,
+        "global_power_scale": 100,
+        "base_power_by_stat": {
+            "Health": 5,
+            "Durability": 7,
+            "Stamina": 5,
+            "Accuracy": 6
+        },
+        "base_power_by_skill": {
+            "Chakra Reserves": 9,
+            "Chakra Control": 11,
+            "Genjutsu": 8,
+            "Taijutsu": 10,
+            "Speed": 9
+        },
+        "base_power_by_level": 80,
+        "base_power_by_kekkei": {
+            "Wood Release": 1000,
+            "Ice Release": 800,
+            "Lava Release": 900,
+            "Shikotsumyaku": 950,
+            "Maddosukin": 2500,
+            "Boil Release": 900,
+            "Storm Release": 950,
+            "Magnet Release": 875,
+            "Explosion Release": 900,
+            "Scorch Release": 900,
+            "Crystal Release": 925,
+            "Steel Release": 875,
+            "Swift Release": 900,
+            "Dark Release": 1050,
+            "Dust Release": 1600,
+            "Sage Transformation": 1100,
+            "Kurama Genjutsu": 1000,
+            "Adamantine Chains": 1000,
+            "Smoke Transformation": 850
+        },
+        "base_power_by_dojutsu": {
+            "Sharingan": 850,
+            "Byakugan": 750,
+            "Ketsuryugan": 950,
+            "Rinnegan": 1800,
+            "Tenseigan": 1700
+        }
+    },
+    "TURN_PVP": {
+        "base_hit_chance": 0.76,
+        "min_hit_chance": 0.48,
+        "max_hit_chance": 0.93,
+        "power_ratio_hit_weight": 0.08,
+        "speed_hit_divisor": 120000,
+        "control_hit_divisor": 150000,
+        "dodge_divisor": 160000,
+        "heavy_hit_penalty": 0.12,
+        "jutsu_hit_penalty": 0.04,
+        "attack_damage_min": 10,
+        "attack_damage_max": 22,
+        "heavy_damage_min": 18,
+        "heavy_damage_max": 34,
+        "attack_taijutsu_divisor": 850,
+        "heavy_taijutsu_divisor": 650,
+        "attack_power_divisor": 16000,
+        "heavy_power_divisor": 12000,
+        "defense_divisor": 450,
+        "minimum_damage": 4,
+        "minimum_starting_hp": 100,
+        "defend_damage_multiplier": 0.5,
+        "win_xp_min": 50,
+        "win_xp_max": 110,
+        "costs": {
+            "attack": {
+                "stamina": 8
+            },
+            "heavy": {
+                "stamina": 18
+            },
+            "taijutsu_combo": {
+                "stamina": 14
+            },
+            "defend": {
+                "stamina": 6
+            },
+            "transformation": {
+                "chakra": 14
+            },
+            "genjutsu": {
+                "chakra": 22
+            },
+            "jutsu": {
+                "chakra": 0
+            }
+        },
+        "combo_damage_min": 14,
+        "combo_damage_max": 28,
+        "combo_taijutsu_divisor": 500,
+        "combo_power_divisor": 14000,
+        "defend_durability_divisor": 25000,
+        "defend_bonus_cap": 0.25,
+        "transformation_hit_penalty": 0.02,
+        "transformation_stun_chance": 65,
+        "transformation_control_divisor": 500,
+        "transformation_stun_cap": 90,
+        "genjutsu_hit_penalty": 0.06,
+        "genjutsu_apply_chance": 60,
+        "genjutsu_apply_divisor": 450,
+        "genjutsu_apply_cap": 92,
+        "genjutsu_miss_penalty": 0.18,
+        "genjutsu_penalty_divisor": 100000,
+        "genjutsu_penalty_cap": 0.12,
+        "genjutsu_turns": 2,
+        "chakra_regen_per_turn": 10,
+        "stamina_regen_per_turn": 10,
+        "global_damage_scale": 100,
+        "max_damage_percent_attack": 0.18,
+        "max_damage_percent_heavy": 0.26,
+        "max_damage_percent_taijutsu_combo": 0.23,
+        "max_damage_percent_jutsu": 0.3,
+        "accuracy_speed_weight": 0.35,
+        "accuracy_control_weight": 0.2,
+        "evasion_speed_weight": 0.75,
+        "hit_rating_divisor": 25000,
+        "level_hit_bonus": 0.003,
+        "max_level_hit_bonus": 0.06,
+        "damage_variance_min": 0.94,
+        "damage_variance_max": 1.06,
+        "level_damage_bonus_per_level": 0.01,
+        "max_level_damage_bonus": 0.2,
+        "attack_base_damage": 14,
+        "heavy_base_damage": 24,
+        "combo_base_damage": 20,
+        "attack_taijutsu_multiplier": 0.0019,
+        "heavy_taijutsu_multiplier": 0.0027,
+        "combo_taijutsu_multiplier": 0.0023,
+        "attack_level_multiplier": 1.2,
+        "heavy_level_multiplier": 1.8,
+        "combo_level_multiplier": 1.5,
+        "durability_damage_reduction_multiplier": 0.03,
+        "jutsu_control_multiplier": 0.0019,
+        "jutsu_reserves_multiplier": 0.0013,
+        "jutsu_level_multiplier": 1.05,
+        "jutsu_defense_divisor": 48,
+        "low_chakra_damage_threshold": 0.25,
+        "low_chakra_damage_multiplier": 0.85,
+        "low_chakra_hit_threshold": 0.25,
+        "low_chakra_hit_penalty": 0.04,
+        "combat_rating_weights": {
+            "Health": 0.8,
+            "Durability": 1.2,
+            "Stamina": 0.8,
+            "Chakra Reserves": 1.1,
+            "Chakra Control": 1.4,
+            "Genjutsu": 1.0,
+            "Taijutsu": 1.3,
+            "Speed": 1.2,
+            "Level": 75,
+            "Kekkei Genkai": 600,
+            "Extra Nature": 125
+        },
+        "accuracy_stat_weight": 0.45
+    },
+    "UI": {
+        "embed_color_primary": "orange",
+        "embed_color_success": "green",
+        "embed_color_warning": "gold",
+        "embed_color_danger": "red"
+    },
+    "TRAIT_MODIFIERS": {
+        "description": "Every bonus here is config-driven. Add or adjust stats/skills without editing bot.py.",
+        "clans": {
+            "Civilian": {
+                "stats": {},
+                "skills": {}
+            },
+            "Uchiha": {
+                "stats": {},
+                "skills": {
+                    "Genjutsu": 1200,
+                    "Chakra Control": 600,
+                    "Speed": 350
+                }
+            },
+            "Hyuga": {
+                "stats": {},
+                "skills": {
+                    "Taijutsu": 1000,
+                    "Chakra Control": 900,
+                    "Speed": 300
+                }
+            },
+            "Senju": {
+                "stats": {},
+                "skills": {
+                    "Chakra Reserves": 1300,
+                    "Chakra Control": 500,
+                    "Taijutsu": 350
+                }
+            },
+            "Nara": {
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 900,
+                    "Genjutsu": 450
+                }
+            },
+            "Akimichi": {
+                "stats": {},
+                "skills": {
+                    "Taijutsu": 700,
+                    "Chakra Reserves": 700,
+                    "Durability": 500
+                }
+            },
+            "Yamanaka": {
+                "stats": {},
+                "skills": {
+                    "Genjutsu": 900,
+                    "Chakra Control": 600
+                }
+            },
+            "Aburame": {
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 700,
+                    "Chakra Reserves": 400
+                }
+            },
+            "Inuzuka": {
+                "stats": {},
+                "skills": {
+                    "Speed": 900,
+                    "Taijutsu": 650
+                }
+            },
+            "Kaguya": {
+                "stats": {},
+                "skills": {
+                    "Taijutsu": 1300,
+                    "Durability": 800
+                }
+            },
+            "Haku Clan": {
+                "stats": {},
+                "skills": {
+                    "Speed": 700,
+                    "Chakra Control": 700
+                }
+            },
+            "Tsuchi": {
+                "stats": {},
+                "skills": {
+                    "Chakra Reserves": 15000,
+                    "Chakra Control": 15000,
+                    "Genjutsu": 15000,
+                    "Taijutsu": 15000,
+                    "Speed": 15000
+                }
+            },
+            "Uzumaki": {
+                "stats": {
+                    "Health": 60
+                },
+                "skills": {
+                    "Chakra Reserves": 1400
+                }
+            },
+            "Sarutobi": {
+                "stats": {
+                    "Accuracy": 20
+                },
+                "skills": {
+                    "Chakra Control": 650,
+                    "Taijutsu": 450
+                }
+            },
+            "Hatake": {
+                "stats": {
+                    "Accuracy": 35
+                },
+                "skills": {
+                    "Speed": 850,
+                    "Chakra Control": 650
+                }
+            },
+            "Lee Clan": {
+                "stats": {
+                    "Stamina": 80
+                },
+                "skills": {
+                    "Taijutsu": 1500,
+                    "Speed": 500
+                }
+            },
+            "Terumi": {
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 750,
+                    "Chakra Reserves": 550
+                }
+            },
+            "Yuki": {
+                "stats": {
+                    "Accuracy": 25
+                },
+                "skills": {
+                    "Speed": 700,
+                    "Chakra Control": 650
+                }
+            },
+            "Hoshigaki": {
+                "stats": {
+                    "Health": 80,
+                    "Stamina": 40
+                },
+                "skills": {
+                    "Chakra Reserves": 1200,
+                    "Taijutsu": 600
+                }
+            },
+            "Jugo Clan": {
+                "stats": {
+                    "Durability": 70,
+                    "Stamina": 50
+                },
+                "skills": {
+                    "Taijutsu": 900,
+                    "Chakra Reserves": 650
+                }
+            },
+            "Kamizuru": {
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 650,
+                    "Genjutsu": 350
+                }
+            },
+            "Kurama": {
+                "stats": {},
+                "skills": {
+                    "Genjutsu": 1600,
+                    "Chakra Control": 450
+                }
+            },
+            "Iburi": {
+                "stats": {
+                    "Accuracy": 20
+                },
+                "skills": {
+                    "Speed": 900,
+                    "Chakra Control": 500
+                }
+            },
+            "Chinoike": {
+                "stats": {
+                    "Accuracy": 40
+                },
+                "skills": {
+                    "Genjutsu": 1000,
+                    "Chakra Control": 700
+                }
+            }
+        },
+        "kekkei_genkai": {
+            "Sharingan": {
+                "stats": {
+                    "Accuracy": 35
+                },
+                "skills": {
+                    "Genjutsu": 900,
+                    "Chakra Control": 500,
+                    "Speed": 250
+                },
+                "power": 850,
+                "category": "dojutsu"
+            },
+            "Byakugan": {
+                "stats": {
+                    "Accuracy": 50
+                },
+                "skills": {
+                    "Taijutsu": 750,
+                    "Chakra Control": 650,
+                    "Speed": 200
+                },
+                "power": 750,
+                "category": "dojutsu"
+            },
+            "Wood Release": {
+                "stats": {
+                    "Health": 75,
+                    "Durability": 45
+                },
+                "skills": {
+                    "Chakra Reserves": 900,
+                    "Chakra Control": 350
+                },
+                "power": 1000,
+                "category": "kekkei"
+            },
+            "Ice Release": {
+                "stats": {
+                    "Accuracy": 30
+                },
+                "skills": {
+                    "Speed": 550,
+                    "Chakra Control": 450
+                },
+                "power": 800,
+                "category": "kekkei"
+            },
+            "Lava Release": {
+                "stats": {
+                    "Durability": 50
+                },
+                "skills": {
+                    "Chakra Reserves": 500,
+                    "Chakra Control": 400
+                },
+                "power": 900,
+                "category": "kekkei"
+            },
+            "Shikotsumyaku": {
+                "stats": {
+                    "Health": 65,
+                    "Durability": 95
+                },
+                "skills": {
+                    "Taijutsu": 900
+                },
+                "power": 950,
+                "category": "kekkei"
+            },
+            "Maddosukin": {
+                "stats": {
+                    "Health": 500,
+                    "Durability": 500,
+                    "Stamina": 500,
+                    "Accuracy": 500
+                },
+                "skills": {
+                    "Chakra Reserves": 2500,
+                    "Chakra Control": 2500,
+                    "Genjutsu": 2500,
+                    "Taijutsu": 2500,
+                    "Speed": 2500
+                },
+                "power": 2500,
+                "category": "kekkei"
+            },
+            "Ketsuryugan": {
+                "stats": {
+                    "Accuracy": 65
+                },
+                "skills": {
+                    "Genjutsu": 1000,
+                    "Chakra Control": 600
+                },
+                "power": 950,
+                "category": "dojutsu"
+            },
+            "Rinnegan": {
+                "stats": {
+                    "Accuracy": 100,
+                    "Durability": 75
+                },
+                "skills": {
+                    "Chakra Control": 1200,
+                    "Chakra Reserves": 1100,
+                    "Genjutsu": 500
+                },
+                "power": 1800,
+                "category": "dojutsu"
+            },
+            "Tenseigan": {
+                "stats": {
+                    "Accuracy": 90,
+                    "Speed": 0
+                },
+                "skills": {
+                    "Chakra Control": 1300,
+                    "Taijutsu": 700,
+                    "Speed": 450
+                },
+                "power": 1700,
+                "category": "dojutsu"
+            },
+            "Boil Release": {
+                "stats": {
+                    "Stamina": 60
+                },
+                "skills": {
+                    "Chakra Control": 650,
+                    "Taijutsu": 450
+                },
+                "power": 900,
+                "category": "kekkei"
+            },
+            "Storm Release": {
+                "stats": {
+                    "Accuracy": 45
+                },
+                "skills": {
+                    "Chakra Control": 700,
+                    "Speed": 550
+                },
+                "power": 950,
+                "category": "kekkei"
+            },
+            "Magnet Release": {
+                "stats": {
+                    "Durability": 45
+                },
+                "skills": {
+                    "Chakra Control": 650,
+                    "Genjutsu": 300
+                },
+                "power": 875,
+                "category": "kekkei"
+            },
+            "Explosion Release": {
+                "stats": {
+                    "Accuracy": 35
+                },
+                "skills": {
+                    "Taijutsu": 650,
+                    "Chakra Control": 550
+                },
+                "power": 900,
+                "category": "kekkei"
+            },
+            "Scorch Release": {
+                "stats": {
+                    "Accuracy": 40
+                },
+                "skills": {
+                    "Chakra Control": 750,
+                    "Speed": 350
+                },
+                "power": 900,
+                "category": "kekkei"
+            },
+            "Crystal Release": {
+                "stats": {
+                    "Durability": 65
+                },
+                "skills": {
+                    "Chakra Control": 750,
+                    "Chakra Reserves": 300
+                },
+                "power": 925,
+                "category": "kekkei"
+            },
+            "Steel Release": {
+                "stats": {
+                    "Durability": 120
+                },
+                "skills": {
+                    "Taijutsu": 500
+                },
+                "power": 875,
+                "category": "kekkei"
+            },
+            "Swift Release": {
+                "stats": {
+                    "Accuracy": 25
+                },
+                "skills": {
+                    "Speed": 1200,
+                    "Taijutsu": 400
+                },
+                "power": 900,
+                "category": "kekkei"
+            },
+            "Dark Release": {
+                "stats": {
+                    "Durability": 40
+                },
+                "skills": {
+                    "Chakra Reserves": 750,
+                    "Chakra Control": 650
+                },
+                "power": 1050,
+                "category": "kekkei"
+            },
+            "Dust Release": {
+                "stats": {
+                    "Accuracy": 75
+                },
+                "skills": {
+                    "Chakra Control": 1400,
+                    "Chakra Reserves": 800
+                },
+                "power": 1600,
+                "category": "kekkei"
+            },
+            "Sage Transformation": {
+                "stats": {
+                    "Health": 80,
+                    "Durability": 80,
+                    "Stamina": 80
+                },
+                "skills": {
+                    "Taijutsu": 800,
+                    "Chakra Reserves": 600
+                },
+                "power": 1100,
+                "category": "kekkei"
+            },
+            "Kurama Genjutsu": {
+                "stats": {
+                    "Accuracy": 50
+                },
+                "skills": {
+                    "Genjutsu": 1500,
+                    "Chakra Control": 500
+                },
+                "power": 1000,
+                "category": "kekkei"
+            },
+            "Adamantine Chains": {
+                "stats": {
+                    "Health": 90,
+                    "Durability": 60
+                },
+                "skills": {
+                    "Chakra Reserves": 1000,
+                    "Chakra Control": 450
+                },
+                "power": 1000,
+                "category": "kekkei"
+            },
+            "Smoke Transformation": {
+                "stats": {
+                    "Accuracy": 30
+                },
+                "skills": {
+                    "Speed": 850,
+                    "Chakra Control": 500
+                },
+                "power": 850,
+                "category": "kekkei"
+            }
+        },
+        "chakra_natures": {
+            "extra_nature_bonus": {
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 250
+                }
+            },
+            "rare_nature_bonus": {
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 300,
+                    "Chakra Reserves": 150
+                }
+            },
+            "rare_natures": [
+                "Ying",
+                "Yang"
+            ]
+        }
+    },
+    "GACHA": {
+        "enabled": true,
+        "currency_name": "Ryo",
+        "active_banner": "bloodline_festival",
+        "single_cost": 250,
+        "multi_cost": 2250,
+        "multi_rolls": 10,
+        "pity_rolls": 30,
+        "pity_min_rarity": "Legendary",
+        "mythic_pity_rolls": 90,
+        "duplicate_jutsu_refund_percent": 35,
+        "duplicate_bloodline_refund_ryo": 750,
+        "featured_chance": 0.45,
+        "rarities": {
+            "Common": {
+                "weight": 54,
+                "color": "neutral"
+            },
+            "Uncommon": {
+                "weight": 25,
+                "color": "info"
+            },
+            "Rare": {
+                "weight": 14,
+                "color": "purple"
+            },
+            "Legendary": {
+                "weight": 5.5,
+                "color": "gold"
+            },
+            "Mythic": {
+                "weight": 1.5,
+                "color": "danger"
+            }
+        },
+        "pools": {
+            "Common": [
+                {
+                    "type": "item",
+                    "name": "Kunai",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Shuriken",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Soldier Pill",
+                    "amount": 1
+                },
+                {
+                    "type": "ryo",
+                    "amount_min": 75,
+                    "amount_max": 175
+                },
+                {
+                    "type": "xp",
+                    "amount_min": 60,
+                    "amount_max": 120
+                }
+            ],
+            "Uncommon": [
+                {
+                    "type": "item",
+                    "name": "Smoke Bomb",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Basic Chakra Pill",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Focus Tag",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Chakra Ink",
+                    "amount": 1
+                },
+                {
+                    "type": "skill_boost",
+                    "target": "Chakra Control",
+                    "amount_min": 25,
+                    "amount_max": 60
+                },
+                {
+                    "type": "stat_boost",
+                    "target": "Accuracy",
+                    "amount_min": 8,
+                    "amount_max": 20
+                }
+            ],
+            "Rare": [
+                {
+                    "type": "item",
+                    "name": "Hope of Tsuchi",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Training Weights",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Scroll Fragment",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Weighted Gi",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Mirror Lens",
+                    "amount": 1
+                },
+                {
+                    "type": "jutsu",
+                    "name": "Fire Spark Jutsu"
+                },
+                {
+                    "type": "jutsu",
+                    "name": "Water Bullet Jutsu"
+                },
+                {
+                    "type": "jutsu",
+                    "name": "Lightning Needle Jutsu"
+                },
+                {
+                    "type": "skill_boost",
+                    "target": "Speed",
+                    "amount_min": 65,
+                    "amount_max": 130
+                },
+                {
+                    "type": "stat_boost",
+                    "target": "Durability",
+                    "amount_min": 25,
+                    "amount_max": 55
+                }
+            ],
+            "Legendary": [
+                {
+                    "type": "item",
+                    "name": "Forbidden Scroll Page",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Dojutsu Lens",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Bloodline Catalyst",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Evolution Shard",
+                    "amount": 2
+                },
+                {
+                    "type": "jutsu",
+                    "name": "Phoenix Flame Jutsu"
+                },
+                {
+                    "type": "jutsu",
+                    "name": "Thunder Fang Jutsu"
+                },
+                {
+                    "type": "jutsu",
+                    "name": "Ying Nightmare Jutsu"
+                },
+                {
+                    "type": "bloodline",
+                    "name": "Ice Release"
+                },
+                {
+                    "type": "bloodline",
+                    "name": "Storm Release"
+                },
+                {
+                    "type": "bloodline",
+                    "name": "Boil Release"
+                },
+                {
+                    "type": "skill_boost",
+                    "target": "Chakra Reserves",
+                    "amount_min": 140,
+                    "amount_max": 280
+                },
+                {
+                    "type": "stat_boost",
+                    "target": "Health",
+                    "amount_min": 65,
+                    "amount_max": 125
+                }
+            ],
+            "Mythic": [
+                {
+                    "type": "item",
+                    "name": "Tailed Beast Chakra Fragment",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Ancient Kekkei Relic",
+                    "amount": 1
+                },
+                {
+                    "type": "item",
+                    "name": "Six Paths Fragment",
+                    "amount": 1
+                },
+                {
+                    "type": "bloodline",
+                    "name": "Wood Release"
+                },
+                {
+                    "type": "bloodline",
+                    "name": "Ketsuryugan"
+                },
+                {
+                    "type": "bloodline",
+                    "name": "Sage Transformation"
+                },
+                {
+                    "type": "bloodline",
+                    "name": "Rinnegan"
+                },
+                {
+                    "type": "bloodline",
+                    "name": "Dust Release"
+                },
+                {
+                    "type": "ryo",
+                    "amount_min": 1500,
+                    "amount_max": 3500
+                }
+            ]
+        },
+        "banners": {
+            "standard": {
+                "name": "Standard Shinobi Scroll",
+                "description": "Balanced permanent banner with items, jutsu, boosts, and rare bloodlines.",
+                "featured": {}
+            },
+            "bloodline_festival": {
+                "name": "Bloodline Festival",
+                "description": "Higher chance for rare Kekkei Genkai, dojutsu, and evolution materials.",
+                "featured": {
+                    "Legendary": [
+                        {
+                            "type": "bloodline",
+                            "name": "Storm Release"
+                        },
+                        {
+                            "type": "bloodline",
+                            "name": "Boil Release"
+                        },
+                        {
+                            "type": "item",
+                            "name": "Bloodline Catalyst",
+                            "amount": 1
+                        }
+                    ],
+                    "Mythic": [
+                        {
+                            "type": "bloodline",
+                            "name": "Ketsuryugan"
+                        },
+                        {
+                            "type": "bloodline",
+                            "name": "Rinnegan"
+                        },
+                        {
+                            "type": "item",
+                            "name": "Six Paths Fragment",
+                            "amount": 1
+                        }
+                    ]
+                }
+            },
+            "forbidden_relics": {
+                "name": "Forbidden Relics",
+                "description": "Focused on rare items, evolution shards, and high-value progression pulls.",
+                "featured": {
+                    "Rare": [
+                        {
+                            "type": "item",
+                            "name": "Evolution Shard",
+                            "amount": 1
+                        }
+                    ],
+                    "Legendary": [
+                        {
+                            "type": "item",
+                            "name": "Dojutsu Lens",
+                            "amount": 1
+                        },
+                        {
+                            "type": "item",
+                            "name": "Bloodline Catalyst",
+                            "amount": 1
+                        }
+                    ],
+                    "Mythic": [
+                        {
+                            "type": "item",
+                            "name": "Ancient Kekkei Relic",
+                            "amount": 1
+                        },
+                        {
+                            "type": "item",
+                            "name": "Six Paths Fragment",
+                            "amount": 1
+                        }
+                    ]
+                }
+            },
+            "elemental_mastery": {
+                "name": "Elemental Mastery",
+                "description": "A chakra-nature focused banner featuring elemental jutsu, Chakra Control boosts, and rare nature progression rewards.",
+                "featured": {
+                    "Rare": [
+                        {
+                            "type": "jutsu",
+                            "name": "Fire Spark Jutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Water Bullet Jutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Earth Shard Jutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Wind Cutter Jutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Lightning Needle Jutsu"
+                        }
+                    ],
+                    "Legendary": [
+                        {
+                            "type": "jutsu",
+                            "name": "Phoenix Flame Jutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Raging Water Torrent"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Stone Coffin Jutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Vacuum Blade Jutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Thunder Fang Jutsu"
+                        },
+                        {
+                            "type": "skill_boost",
+                            "target": "Chakra Control",
+                            "amount_min": 90,
+                            "amount_max": 150
+                        }
+                    ],
+                    "Mythic": [
+                        {
+                            "type": "jutsu",
+                            "name": "Ying Nightmare Jutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Yang Vital Burst"
+                        },
+                        {
+                            "type": "skill_boost",
+                            "target": "Chakra Control",
+                            "amount_min": 180,
+                            "amount_max": 300
+                        }
+                    ]
+                }
+            },
+            "dojutsu_awakening": {
+                "name": "Dojutsu Awakening",
+                "description": "A rare eye-power banner focused on Sharingan, Byakugan, Ketsuryugan, and high-accuracy rewards.",
+                "featured": {
+                    "Rare": [
+                        {
+                            "type": "item",
+                            "name": "Mirror Lens",
+                            "amount": 1
+                        },
+                        {
+                            "type": "stat_boost",
+                            "target": "Accuracy",
+                            "amount_min": 30,
+                            "amount_max": 60
+                        }
+                    ],
+                    "Legendary": [
+                        {
+                            "type": "dojutsu",
+                            "name": "Sharingan"
+                        },
+                        {
+                            "type": "dojutsu",
+                            "name": "Byakugan"
+                        },
+                        {
+                            "type": "dojutsu",
+                            "name": "Ketsuryugan"
+                        },
+                        {
+                            "type": "item",
+                            "name": "Dojutsu Lens",
+                            "amount": 1
+                        }
+                    ],
+                    "Mythic": [
+                        {
+                            "type": "dojutsu",
+                            "name": "Rinnegan"
+                        },
+                        {
+                            "type": "dojutsu",
+                            "name": "Tenseigan"
+                        },
+                        {
+                            "type": "item",
+                            "name": "Six Paths Fragment",
+                            "amount": 1
+                        }
+                    ]
+                }
+            },
+            "tailed_beast_chakra": {
+                "name": "Tailed Beast Chakra",
+                "description": "A high-risk chakra banner featuring massive Chakra Reserves rewards, beast fragments, and heavy progression items.",
+                "featured": {
+                    "Rare": [
+                        {
+                            "type": "skill_boost",
+                            "target": "Chakra Reserves",
+                            "amount_min": 60,
+                            "amount_max": 110
+                        },
+                        {
+                            "type": "item",
+                            "name": "Sealing Chain Fragment",
+                            "amount": 1
+                        }
+                    ],
+                    "Legendary": [
+                        {
+                            "type": "item",
+                            "name": "Tailed Beast Chakra Fragment",
+                            "amount": 1
+                        },
+                        {
+                            "type": "skill_boost",
+                            "target": "Chakra Reserves",
+                            "amount_min": 160,
+                            "amount_max": 260
+                        },
+                        {
+                            "type": "kekkei",
+                            "name": "Adamantine Chains"
+                        }
+                    ],
+                    "Mythic": [
+                        {
+                            "type": "item",
+                            "name": "Ancient Kekkei Relic",
+                            "amount": 1
+                        },
+                        {
+                            "type": "skill_boost",
+                            "target": "Chakra Reserves",
+                            "amount_min": 300,
+                            "amount_max": 500
+                        },
+                        {
+                            "type": "kekkei",
+                            "name": "Sage Transformation"
+                        }
+                    ]
+                }
+            },
+            "shadow_assassin": {
+                "name": "Shadow Assassin",
+                "description": "A speed, genjutsu, and control banner built for duelists who want evasive pressure and status-heavy combat.",
+                "featured": {
+                    "Rare": [
+                        {
+                            "type": "item",
+                            "name": "Smoke Bomb",
+                            "amount": 2
+                        },
+                        {
+                            "type": "skill_boost",
+                            "target": "Speed",
+                            "amount_min": 60,
+                            "amount_max": 120
+                        },
+                        {
+                            "type": "skill_boost",
+                            "target": "Genjutsu",
+                            "amount_min": 60,
+                            "amount_max": 120
+                        }
+                    ],
+                    "Legendary": [
+                        {
+                            "type": "jutsu",
+                            "name": "Shadow Possession"
+                        },
+                        {
+                            "type": "kekkei",
+                            "name": "Swift Release"
+                        },
+                        {
+                            "type": "kekkei",
+                            "name": "Dark Release"
+                        },
+                        {
+                            "type": "skill_boost",
+                            "target": "Speed",
+                            "amount_min": 160,
+                            "amount_max": 260
+                        }
+                    ],
+                    "Mythic": [
+                        {
+                            "type": "kekkei",
+                            "name": "Kurama Genjutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Ying Nightmare Jutsu"
+                        },
+                        {
+                            "type": "skill_boost",
+                            "target": "Genjutsu",
+                            "amount_min": 300,
+                            "amount_max": 500
+                        }
+                    ]
+                }
+            },
+            "village_war_cache": {
+                "name": "Village War Cache",
+                "description": "A war-supply banner with balanced items, combat boosts, Ryo returns, and battlefield-ready jutsu.",
+                "featured": {
+                    "Rare": [
+                        {
+                            "type": "item",
+                            "name": "Weighted Gi",
+                            "amount": 1
+                        },
+                        {
+                            "type": "item",
+                            "name": "Nature Catalyst",
+                            "amount": 1
+                        },
+                        {
+                            "type": "ryo",
+                            "amount_min": 350,
+                            "amount_max": 650
+                        }
+                    ],
+                    "Legendary": [
+                        {
+                            "type": "item",
+                            "name": "Hope of Tsuchi",
+                            "amount": 1
+                        },
+                        {
+                            "type": "item",
+                            "name": "Bloodline Catalyst",
+                            "amount": 1
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Great Fireball Jutsu"
+                        },
+                        {
+                            "type": "jutsu",
+                            "name": "Gentle Fist"
+                        }
+                    ],
+                    "Mythic": [
+                        {
+                            "type": "kekkei",
+                            "name": "Wood Release"
+                        },
+                        {
+                            "type": "kekkei",
+                            "name": "Dust Release"
+                        },
+                        {
+                            "type": "item",
+                            "name": "Six Paths Fragment",
+                            "amount": 1
+                        }
+                    ]
+                }
+            }
+        },
+        "weekly_rotation": {
+            "enabled": true,
+            "rotation_label": "Weekly Random Banner",
+            "change_day": "Monday",
+            "timezone": "UTC",
+            "seed_mode": "year_week",
+            "include_banners": [
+                "standard",
+                "bloodline_festival",
+                "forbidden_relics",
+                "elemental_mastery",
+                "dojutsu_awakening",
+                "tailed_beast_chakra",
+                "shadow_assassin",
+                "village_war_cache"
+            ]
+        }
+    },
+    "DOJUTSU": [
+        "Sharingan",
+        "Byakugan",
+        "Ketsuryugan",
+        "Rinnegan",
+        "Tenseigan"
+    ],
+    "KEKKEI_EVOLUTION": {
+        "enabled": true,
+        "training_roll_max": 100,
+        "training_success_chance": 3,
+        "fight_roll_max": 100,
+        "fight_success_chance": 7,
+        "default_required_item": "Evolution Shard",
+        "paths": {
+            "Sharingan": [
+                {
+                    "name": "One Tomoe Sharingan",
+                    "level": 1,
+                    "skills": {
+                        "Genjutsu": 250,
+                        "Chakra Control": 150,
+                        "Speed": 100
+                    },
+                    "stats": {
+                        "Accuracy": 15
+                    }
+                },
+                {
+                    "name": "Two Tomoe Sharingan",
+                    "level": 8,
+                    "item": "Evolution Shard",
+                    "item_amount": 1,
+                    "skills": {
+                        "Genjutsu": 400,
+                        "Chakra Control": 225,
+                        "Speed": 150
+                    },
+                    "stats": {
+                        "Accuracy": 20
+                    }
+                },
+                {
+                    "name": "Three Tomoe Sharingan",
+                    "level": 16,
+                    "item": "Evolution Shard",
+                    "item_amount": 2,
+                    "skills": {
+                        "Genjutsu": 650,
+                        "Chakra Control": 300,
+                        "Speed": 225
+                    },
+                    "stats": {
+                        "Accuracy": 30
+                    }
+                },
+                {
+                    "name": "Mangekyo Sharingan",
+                    "level": 28,
+                    "item": "Dojutsu Lens",
+                    "item_amount": 1,
+                    "ryo_cost": 2500,
+                    "skills": {
+                        "Genjutsu": 900,
+                        "Chakra Control": 450,
+                        "Speed": 300
+                    },
+                    "stats": {
+                        "Accuracy": 45
+                    }
+                },
+                {
+                    "name": "Eternal Mangekyo Sharingan",
+                    "level": 42,
+                    "item": "Six Paths Fragment",
+                    "item_amount": 1,
+                    "ryo_cost": 7500,
+                    "skills": {
+                        "Genjutsu": 1300,
+                        "Chakra Control": 750,
+                        "Speed": 450
+                    },
+                    "stats": {
+                        "Accuracy": 70
+                    }
+                }
+            ],
+            "Byakugan": [
+                {
+                    "name": "Awakened Byakugan",
+                    "level": 1,
+                    "skills": {
+                        "Taijutsu": 350,
+                        "Chakra Control": 250
+                    },
+                    "stats": {
+                        "Accuracy": 25
+                    }
+                },
+                {
+                    "name": "Mastered Byakugan",
+                    "level": 18,
+                    "item": "Dojutsu Lens",
+                    "item_amount": 1,
+                    "skills": {
+                        "Taijutsu": 800,
+                        "Chakra Control": 500,
+                        "Speed": 250
+                    },
+                    "stats": {
+                        "Accuracy": 55
+                    }
+                },
+                {
+                    "name": "Tenseigan Path",
+                    "level": 45,
+                    "item": "Six Paths Fragment",
+                    "item_amount": 1,
+                    "ryo_cost": 9000,
+                    "evolves_to": "Tenseigan",
+                    "skills": {
+                        "Chakra Control": 1500,
+                        "Taijutsu": 900,
+                        "Speed": 600
+                    },
+                    "stats": {
+                        "Accuracy": 100
+                    }
+                }
+            ],
+            "Ketsuryugan": [
+                {
+                    "name": "Ketsuryugan",
+                    "level": 1,
+                    "skills": {
+                        "Genjutsu": 500,
+                        "Chakra Control": 300
+                    },
+                    "stats": {
+                        "Accuracy": 35
+                    }
+                },
+                {
+                    "name": "Blood Dragon Ketsuryugan",
+                    "level": 25,
+                    "item": "Bloodline Catalyst",
+                    "item_amount": 1,
+                    "ryo_cost": 3500,
+                    "skills": {
+                        "Genjutsu": 1100,
+                        "Chakra Control": 750
+                    },
+                    "stats": {
+                        "Accuracy": 75
+                    }
+                }
+            ],
+            "Wood Release": [
+                {
+                    "name": "Wood Release",
+                    "level": 1,
+                    "skills": {
+                        "Chakra Reserves": 400,
+                        "Chakra Control": 250
+                    },
+                    "stats": {
+                        "Health": 45,
+                        "Durability": 30
+                    }
+                },
+                {
+                    "name": "Deep Forest Bloom",
+                    "level": 25,
+                    "item": "Nature Catalyst",
+                    "item_amount": 2,
+                    "ryo_cost": 4000,
+                    "skills": {
+                        "Chakra Reserves": 1100,
+                        "Chakra Control": 700
+                    },
+                    "stats": {
+                        "Health": 110,
+                        "Durability": 75
+                    }
+                }
+            ],
+            "Ice Release": [
+                {
+                    "name": "Ice Release",
+                    "level": 1,
+                    "skills": {
+                        "Speed": 350,
+                        "Chakra Control": 300
+                    },
+                    "stats": {
+                        "Accuracy": 20
+                    }
+                },
+                {
+                    "name": "Demonic Ice Mastery",
+                    "level": 22,
+                    "item": "Nature Catalyst",
+                    "item_amount": 1,
+                    "ryo_cost": 3000,
+                    "skills": {
+                        "Speed": 950,
+                        "Chakra Control": 750
+                    },
+                    "stats": {
+                        "Accuracy": 60
+                    }
+                }
+            ],
+            "Lava Release": [
+                {
+                    "name": "Lava Release",
+                    "level": 1,
+                    "skills": {
+                        "Chakra Control": 350,
+                        "Chakra Reserves": 300
+                    },
+                    "stats": {
+                        "Durability": 40
+                    }
+                },
+                {
+                    "name": "Corrosive Lava Release",
+                    "level": 24,
+                    "item": "Nature Catalyst",
+                    "item_amount": 1,
+                    "ryo_cost": 3500,
+                    "skills": {
+                        "Chakra Control": 900,
+                        "Chakra Reserves": 650
+                    },
+                    "stats": {
+                        "Durability": 85
+                    }
+                }
+            ],
+            "Sage Transformation": [
+                {
+                    "name": "Unstable Sage Transformation",
+                    "level": 1,
+                    "skills": {
+                        "Taijutsu": 450,
+                        "Chakra Reserves": 300
+                    },
+                    "stats": {
+                        "Health": 50,
+                        "Durability": 50
+                    }
+                },
+                {
+                    "name": "Controlled Sage Transformation",
+                    "level": 30,
+                    "item": "Ancient Kekkei Relic",
+                    "item_amount": 1,
+                    "ryo_cost": 5000,
+                    "skills": {
+                        "Taijutsu": 1200,
+                        "Chakra Reserves": 900
+                    },
+                    "stats": {
+                        "Health": 120,
+                        "Durability": 120,
+                        "Stamina": 100
+                    }
+                }
+            ]
+        }
+    },
+    "MISSIONS": {
+        "enabled": true,
+        "default_cooldown_minutes": 60,
+        "base_success": 0.55,
+        "power_weight": 0.28,
+        "min_success": 0.18,
+        "max_success": 0.92,
+        "fail_xp": 15,
+        "fail_ryo": 10,
+        "missions": {
+            "lost_cat": {
+                "name": "Find the Lost Cat",
+                "aliases": [
+                    "cat",
+                    "d-rank"
+                ],
+                "rank": "D",
+                "level": 1,
+                "power": 1200,
+                "xp_min": 45,
+                "xp_max": 90,
+                "ryo_min": 35,
+                "ryo_max": 80,
+                "cooldown_minutes": 30,
+                "item_chance": 5,
+                "items": [
+                    "Kunai",
+                    "Shuriken"
+                ]
+            },
+            "escort_merchant": {
+                "name": "Escort the Merchant",
+                "aliases": [
+                    "escort",
+                    "merchant"
+                ],
+                "rank": "C",
+                "level": 3,
+                "power": 4500,
+                "xp_min": 100,
+                "xp_max": 180,
+                "ryo_min": 90,
+                "ryo_max": 175,
+                "cooldown_minutes": 60,
+                "item_chance": 12,
+                "items": [
+                    "Smoke Bomb",
+                    "Basic Chakra Pill"
+                ]
+            },
+            "bandit_cleanup": {
+                "name": "Bandit Cleanup",
+                "aliases": [
+                    "bandit",
+                    "cleanup"
+                ],
+                "rank": "C",
+                "level": 5,
+                "power": 6500,
+                "xp_min": 140,
+                "xp_max": 240,
+                "ryo_min": 130,
+                "ryo_max": 240,
+                "cooldown_minutes": 90,
+                "item_chance": 18,
+                "items": [
+                    "Training Weights",
+                    "Scroll Fragment"
+                ]
+            },
+            "rogue_shinobi": {
+                "name": "Hunt Rogue Shinobi",
+                "aliases": [
+                    "rogue",
+                    "hunt"
+                ],
+                "rank": "B",
+                "level": 10,
+                "power": 10500,
+                "xp_min": 240,
+                "xp_max": 380,
+                "ryo_min": 250,
+                "ryo_max": 425,
+                "cooldown_minutes": 180,
+                "item_chance": 28,
+                "items": [
+                    "Scroll Fragment",
+                    "Forbidden Scroll Page"
+                ]
+            },
+            "border_defense": {
+                "name": "Border Defense",
+                "aliases": [
+                    "border",
+                    "defense"
+                ],
+                "rank": "A",
+                "level": 18,
+                "power": 17500,
+                "xp_min": 420,
+                "xp_max": 700,
+                "ryo_min": 450,
+                "ryo_max": 850,
+                "cooldown_minutes": 360,
+                "item_chance": 40,
+                "items": [
+                    "Forbidden Scroll Page",
+                    "Tailed Beast Chakra Fragment"
+                ]
+            },
+            "akatsuki_trace": {
+                "name": "Trace the Akatsuki",
+                "aliases": [
+                    "akatsuki",
+                    "trace"
+                ],
+                "rank": "S",
+                "level": 30,
+                "power": 30000,
+                "xp_min": 900,
+                "xp_max": 1500,
+                "ryo_min": 1000,
+                "ryo_max": 1800,
+                "cooldown_minutes": 720,
+                "item_chance": 60,
+                "items": [
+                    "Tailed Beast Chakra Fragment",
+                    "Forbidden Scroll Page"
+                ]
+            }
+        }
+    }
+}
