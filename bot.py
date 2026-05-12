@@ -13,8 +13,47 @@ if Path(".env").exists():
     for line in Path(".env").read_text().splitlines():
         if line.strip().startswith("DISCORD_TOKEN=") and not TOKEN:
             TOKEN = line.split("=", 1)[1].strip().strip("\'").strip('"')
-DATA_FILE = Path("players.json")
+
+# -----------------------------
+# Persistent Data Storage
+# -----------------------------
+# Railway's new volume mount exposes the path through RAILWAY_VOLUME_MOUNT_PATH.
+# If Railway does not provide it, this falls back to /data, then finally local storage.
+# Your live player data should live on the mounted volume, not inside the GitHub repo.
+
+def get_data_dir():
+    preferred_paths = [
+        os.getenv("RAILWAY_VOLUME_MOUNT_PATH"),
+        "/data",
+        ".",
+    ]
+
+    for raw_path in preferred_paths:
+        if not raw_path:
+            continue
+
+        path = Path(raw_path)
+
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+            test_file = path / ".write_test"
+            test_file.write_text("ok", encoding="utf-8")
+            test_file.unlink(missing_ok=True)
+            return path
+        except Exception:
+            continue
+
+    return Path(".")
+
+
+DATA_DIR = get_data_dir()
+DATA_FILE = DATA_DIR / "players.json"
 CONFIG_FILE = Path("config.json")
+
+if not DATA_FILE.exists():
+    DATA_FILE.write_text("{}", encoding="utf-8")
+
+print(f"Using player data file: {DATA_FILE.resolve()}")
 def load_config():
     if not CONFIG_FILE.exists():
         raise FileNotFoundError(
@@ -242,15 +281,24 @@ def now_utc():
 
 def load_players():
     if not DATA_FILE.exists():
+        DATA_FILE.write_text("{}", encoding="utf-8")
         return {}
 
-    with open(DATA_FILE, "r") as file:
-        return json.load(file)
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as file:
+            return json.load(file)
+    except json.JSONDecodeError:
+        backup_file = DATA_FILE.with_suffix(f".broken-{int(datetime.now().timestamp())}.json")
+        DATA_FILE.replace(backup_file)
+        DATA_FILE.write_text("{}", encoding="utf-8")
+        print(f"WARNING: players.json was invalid JSON. Backed it up to {backup_file}")
+        return {}
 
 
 def save_players(players):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     tmp_file = DATA_FILE.with_suffix(".json.tmp")
-    with open(tmp_file, "w") as file:
+    with open(tmp_file, "w", encoding="utf-8") as file:
         json.dump(players, file, indent=4)
     tmp_file.replace(DATA_FILE)
 
