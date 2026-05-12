@@ -5501,6 +5501,93 @@ async def devgive(ctx, member: discord.Member, give_type: str = None, *, value: 
     add_field(embed, "Changes", "\n".join(f"- {line}" for line in changes) or "No changes made.", False)
     await ctx.send(embed=embed)
 
+
+@bot.command(name="devscorefix", aliases=["scorefix", "fixscore", "devfixscore"])
+async def devscorefix(ctx, member: discord.Member = None):
+    """Developer command that recalculates hidden skill score after manual/dev edits.
+
+    Usage:
+    $devscorefix @player  -> fixes one player
+    $devscorefix          -> fixes every saved player
+    """
+    if ctx.author.id not in DEV_USER_IDS:
+        await send_notice(ctx, "Developer Only", "You do not have permission to use this command.", "danger")
+        return
+
+    players = migrate_all_players(load_players())
+
+    if not players:
+        await send_notice(ctx, "No Players Found", "No player profiles exist yet.", "warning")
+        return
+
+    # Fix one specific player when mentioned.
+    if member is not None:
+        user_id = str(member.id)
+
+        if user_id not in players:
+            await send_notice(ctx, "Profile Not Found", f"{member.mention} does not have a profile.", "warning")
+            return
+
+        player = players[user_id]
+        old_score = int(player.get("hidden_skill_score", 0) or 0)
+
+        sync_player_bloodlines(player)
+        if player.get("level"):
+            player["rank"] = get_ninja_rank(player.get("level", 1))
+        player["hidden_skill_score"] = calculate_hidden_skill_score(player)
+        new_score = int(player.get("hidden_skill_score", 0) or 0)
+
+        players[user_id] = player
+        save_players(players)
+
+        embed = ui_embed("Skill Score Fixed", f"Recalculated {member.mention}'s hidden skill score.", "success")
+        add_field(embed, "Result", "\n".join([
+            kv_line("Old Score", fmt_num(old_score)),
+            kv_line("New Score", fmt_num(new_score)),
+            kv_line("Change", f"{new_score - old_score:+,}"),
+            kv_line("Combat Rating", fmt_num(calculate_combat_rating(player))),
+        ]), False)
+        await ctx.send(embed=embed)
+        return
+
+    # No mention = fix everyone.
+    fixed_count = 0
+    changed_count = 0
+    biggest_changes = []
+
+    for user_id, player in players.items():
+        old_score = int(player.get("hidden_skill_score", 0) or 0)
+
+        sync_player_bloodlines(player)
+        if player.get("level"):
+            player["rank"] = get_ninja_rank(player.get("level", 1))
+        player["hidden_skill_score"] = calculate_hidden_skill_score(player)
+
+        new_score = int(player.get("hidden_skill_score", 0) or 0)
+        delta = new_score - old_score
+        fixed_count += 1
+
+        if delta != 0:
+            changed_count += 1
+            biggest_changes.append((abs(delta), user_id, player.get("name", "Unknown"), old_score, new_score, delta))
+
+    save_players(players)
+    biggest_changes.sort(reverse=True, key=lambda item: item[0])
+
+    embed = ui_embed("Skill Scores Fixed", "Recalculated hidden skill scores for all saved players.", "success")
+    add_field(embed, "Summary", "\n".join([
+        kv_line("Players Checked", fmt_num(fixed_count)),
+        kv_line("Scores Changed", fmt_num(changed_count)),
+    ]), False)
+
+    if biggest_changes:
+        lines = []
+        for _, user_id, name, old_score, new_score, delta in biggest_changes[:8]:
+            lines.append(f"**{name}** `<@{user_id}>`: {fmt_num(old_score)} → {fmt_num(new_score)} ({delta:+,})")
+        add_field(embed, "Largest Changes", "\n".join(lines), False)
+
+    await ctx.send(embed=embed)
+
 @bot.command(name="devreloadconfig")
 async def devreloadconfig(ctx):
     global CONFIG, TRAINING_COOLDOWN_MINUTES, DUEL_DURATION_SECONDS, DUEL_ROUND_DELAY_SECONDS
