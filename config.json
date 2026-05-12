@@ -1035,7 +1035,7 @@
         "Yang Vital Surge": {
             "type": "Ninjutsu",
             "description": "A Yang Release technique that floods the body with life-force, restoring vitality while empowering attacks.",
-            "chakra_cost": 55,
+            "chakra_cost": 90,
             "base_power": 45,
             "scaling": "Chakra Reserves",
             "scaling_divisor": 150,
@@ -1082,7 +1082,7 @@
         "Fireball Jutsu": {
             "type": "Ninjutsu",
             "description": "A classic fire-style attack that scales with Chakra Control.",
-            "chakra_cost": 55,
+            "chakra_cost": 90,
             "base_power": 50,
             "scaling": "Chakra Control",
             "scaling_divisor": 150,
@@ -1100,7 +1100,7 @@
         "Water Prison Jutsu": {
             "type": "Ninjutsu",
             "description": "A control-based water technique that scales with Chakra Control.",
-            "chakra_cost": 55,
+            "chakra_cost": 90,
             "base_power": 55,
             "scaling": "Chakra Control",
             "scaling_divisor": 150,
@@ -1118,7 +1118,7 @@
         "Lightning Blade": {
             "type": "Ninjutsu",
             "description": "A high-damage lightning technique that scales with Speed.",
-            "chakra_cost": 55,
+            "chakra_cost": 135,
             "base_power": 220,
             "scaling": "Speed",
             "scaling_divisor": 100,
@@ -1136,7 +1136,7 @@
         "Shadow Possession": {
             "type": "Clan Technique",
             "description": "A Nara clan control technique that scales with Genjutsu.",
-            "chakra_cost": 55,
+            "chakra_cost": 105,
             "base_power": 160,
             "scaling": "Genjutsu",
             "scaling_divisor": 100,
@@ -1154,7 +1154,7 @@
         "Gentle Fist": {
             "type": "Taijutsu",
             "description": "A Hyuga technique that scales with Taijutsu.",
-            "chakra_cost": 55,
+            "chakra_cost": 115,
             "base_power": 170,
             "scaling": "Taijutsu",
             "scaling_divisor": 95,
@@ -1173,7 +1173,7 @@
         "Great Fireball Jutsu": {
             "type": "Clan Technique",
             "description": "An Uchiha fire technique that scales with Chakra Control.",
-            "chakra_cost": 55,
+            "chakra_cost": 125,
             "base_power": 200,
             "scaling": "Chakra Control",
             "scaling_divisor": 95,
@@ -1191,7 +1191,7 @@
         "Wood Dragon Jutsu": {
             "type": "Kekkei Genkai",
             "description": "A powerful Wood Release technique.",
-            "chakra_cost": 55,
+            "chakra_cost": 170,
             "base_power": 340,
             "scaling": "Chakra Reserves",
             "scaling_divisor": 85,
@@ -1209,7 +1209,7 @@
         "Fire Spark Jutsu": {
             "type": "Basic Ninjutsu",
             "description": "A beginner Fire Release technique that launches a quick burst of flame.",
-            "chakra_cost": 38,
+            "chakra_cost": 65,
             "base_power": 52,
             "scaling": "Chakra Control",
             "scaling_divisor": 160,
@@ -1227,7 +1227,7 @@
         "Water Bullet Jutsu": {
             "type": "Basic Ninjutsu",
             "description": "A beginner Water Release technique that fires a compressed water shot.",
-            "chakra_cost": 38,
+            "chakra_cost": 65,
             "base_power": 50,
             "scaling": "Chakra Control",
             "scaling_divisor": 165,
@@ -1245,7 +1245,7 @@
         "Earth Shard Jutsu": {
             "type": "Basic Ninjutsu",
             "description": "A beginner Earth Release technique that hurls sharp stone fragments.",
-            "chakra_cost": 38,
+            "chakra_cost": 65,
             "base_power": 58,
             "scaling": "Durability",
             "scaling_divisor": 170,
@@ -1263,7 +1263,7 @@
         "Wind Cutter Jutsu": {
             "type": "Basic Ninjutsu",
             "description": "A beginner Wind Release technique that sends a slicing gust forward.",
-            "chakra_cost": 38,
+            "chakra_cost": 65,
             "base_power": 50,
             "scaling": "Speed",
             "scaling_divisor": 155,
@@ -1281,7 +1281,7 @@
         "Lightning Needle Jutsu": {
             "type": "Basic Ninjutsu",
             "description": "A beginner Lightning Release technique that shocks the target with focused chakra.",
-            "chakra_cost": 38,
+            "chakra_cost": 65,
             "base_power": 54,
             "scaling": "Speed",
             "scaling_divisor": 150,
@@ -1299,7 +1299,7 @@
         "Ying Mirage Jutsu": {
             "type": "Basic Genjutsu",
             "description": "A beginner Ying technique that creates a brief illusion and makes the enemy less accurate.",
-            "chakra_cost": 38,
+            "chakra_cost": 65,
             "base_power": 45,
             "scaling": "Genjutsu",
             "scaling_divisor": 170,
@@ -1318,7 +1318,7 @@
         "Yang Pulse Jutsu": {
             "type": "Basic Ninjutsu",
             "description": "A beginner Yang technique that strikes with life-force chakra and lightly restores the user.",
-            "chakra_cost": 38,
+            "chakra_cost": 65,
             "base_power": 48,
             "scaling": "Chakra Reserves",
             "scaling_divisor": 165,
@@ -1336,7 +1336,7 @@
         "Phoenix Flame Jutsu": {
             "type": "Advanced Ninjutsu",
             "description": "An advanced Fire Release technique that overwhelms the enemy with focused flames.",
-            "chakra_cost": 55,
+            "chakra_cost": 90,
             "base_power": 118,
             "scaling": "Chakra Control",
             "scaling_divisor": 125,
@@ -1354,7 +1354,7 @@
         "Raging Water Torrent": {
             "type": "Advanced Ninjutsu",
             "description": "An advanced Water Release technique that crashes into the opponent with heavy force.",
-            "chakra_cost": 62,
+            "chakra_cost": 100,
             "base_power": 112,
             "scaling": "Chakra Control",
             "scaling_divisor": 130,
@@ -1372,7 +1372,7 @@
         "Stone Coffin Jutsu": {
             "type": "Advanced Ninjutsu",
             "description": "An advanced Earth Release technique that crushes the target with dense stone pressure.",
-            "chakra_cost": 68,
+            "chakra_cost": 110,
             "base_power": 125,
             "scaling": "Durability",
             "scaling_divisor": 135,
@@ -1390,7 +1390,7 @@
         "Vacuum Blade Jutsu": {
             "type": "Advanced Ninjutsu",
             "description": "An advanced Wind Release technique that forms a high-speed chakra blade.",
-            "chakra_cost": 64,
+            "chakra_cost": 100,
             "base_power": 120,
             "scaling": "Speed",
             "scaling_divisor": 120,
@@ -1408,7 +1408,7 @@
         "Thunder Fang Jutsu": {
             "type": "Advanced Ninjutsu",
             "description": "An advanced Lightning Release technique that pierces through defenses with violent chakra.",
-            "chakra_cost": 70,
+            "chakra_cost": 115,
             "base_power": 128,
             "scaling": "Speed",
             "scaling_divisor": 118,
@@ -1426,7 +1426,7 @@
         "Ying Nightmare Jutsu": {
             "type": "Advanced Genjutsu",
             "description": "An advanced Ying technique that traps the enemy in a stronger illusion and heavily lowers accuracy.",
-            "chakra_cost": 66,
+            "chakra_cost": 105,
             "base_power": 100,
             "scaling": "Genjutsu",
             "scaling_divisor": 120,
@@ -1445,7 +1445,7 @@
         "Yang Vital Burst": {
             "type": "Advanced Ninjutsu",
             "description": "An advanced Yang technique that damages the enemy while restoring the user's vitality.",
-            "chakra_cost": 68,
+            "chakra_cost": 110,
             "base_power": 108,
             "scaling": "Chakra Reserves",
             "scaling_divisor": 120,
@@ -1461,7 +1461,7 @@
             }
         }
     },
-    "BOT_VERSION": "1.9.0",
+    "BOT_VERSION": "1.9.0-chakra-balance",
     "REROLLS_PER_PLAYER": 3,
     "TOURNAMENT": {
         "min_win_chance": 0.18,
@@ -1707,13 +1707,13 @@
                 "stamina": 6
             },
             "transformation": {
-                "chakra": 14
+                "chakra": 20
             },
             "genjutsu": {
-                "chakra": 22
+                "chakra": 35
             },
             "jutsu": {
-                "chakra": 0
+                "chakra": 10
             }
         },
         "combo_damage_min": 14,
@@ -1734,7 +1734,7 @@
         "genjutsu_penalty_divisor": 100000,
         "genjutsu_penalty_cap": 0.12,
         "genjutsu_turns": 2,
-        "chakra_regen_per_turn": 10,
+        "chakra_regen_per_turn": 8,
         "stamina_regen_per_turn": 10,
         "global_damage_scale": 100,
         "max_damage_percent_attack": 0.18,
