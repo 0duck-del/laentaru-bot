@@ -48,6 +48,7 @@ def get_data_dir():
 
 DATA_DIR = get_data_dir()
 DATA_FILE = DATA_DIR / "players.json"
+LOTTERY_FILE = DATA_DIR / "lottery.json"
 CONFIG_FILE = Path("config.json")
 
 if not DATA_FILE.exists():
@@ -108,6 +109,7 @@ ACTIVE_TOURNAMENT = None
 DUEL_REQUESTS = {}
 ACTIVE_DUELS = {}
 RANDOM_EVENT_TASK_STARTED = False
+LOTTERY_TASK_STARTED = False
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -301,6 +303,190 @@ def save_players(players):
     with open(tmp_file, "w", encoding="utf-8") as file:
         json.dump(players, file, indent=4)
     tmp_file.replace(DATA_FILE)
+
+
+# -----------------------------
+# Hourly Lottery System
+# -----------------------------
+
+def get_lottery_config():
+    return CONFIG.get("LOTTERY", {})
+
+
+def is_lottery_enabled():
+    return bool(get_lottery_config().get("enabled", True))
+
+
+def get_lottery_ticket_price():
+    return int(get_lottery_config().get("ticket_price", 10))
+
+
+def get_lottery_interval_seconds():
+    return int(get_lottery_config().get("draw_interval_seconds", 3600))
+
+
+def get_lottery_channel_id():
+    lottery_channel = get_lottery_config().get("channel_id")
+    if lottery_channel:
+        return int(lottery_channel)
+    return int(CONFIG.get("RANDOM_EVENTS", {}).get("channel_id", 0) or 0)
+
+
+def get_default_lottery_state():
+    return {
+        "pot": int(get_lottery_config().get("starting_pot", 0)),
+        "tickets": {},
+        "round_started_at": now_utc().isoformat(),
+        "last_draw_at": None,
+        "total_rounds": 0,
+        "last_winner_id": None,
+        "last_winner_tickets": 0,
+        "last_prize": 0,
+    }
+
+
+def load_lottery():
+    if not LOTTERY_FILE.exists():
+        state = get_default_lottery_state()
+        save_lottery(state)
+        return state
+
+    try:
+        with open(LOTTERY_FILE, "r", encoding="utf-8") as file:
+            state = json.load(file)
+    except json.JSONDecodeError:
+        backup_file = LOTTERY_FILE.with_suffix(f".broken-{int(datetime.now().timestamp())}.json")
+        LOTTERY_FILE.replace(backup_file)
+        state = get_default_lottery_state()
+        save_lottery(state)
+        print(f"WARNING: lottery.json was invalid JSON. Backed it up to {backup_file}")
+        return state
+
+    if not isinstance(state, dict):
+        state = {}
+
+    defaults = get_default_lottery_state()
+    for key, value in defaults.items():
+        state.setdefault(key, value)
+    if not isinstance(state.get("tickets"), dict):
+        state["tickets"] = {}
+    state["pot"] = int(state.get("pot", 0) or 0)
+    return state
+
+
+def save_lottery(state):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_file = LOTTERY_FILE.with_suffix(".json.tmp")
+    with open(tmp_file, "w", encoding="utf-8") as file:
+        json.dump(state, file, indent=4)
+    tmp_file.replace(LOTTERY_FILE)
+
+
+def get_lottery_total_tickets(state):
+    return sum(int(amount or 0) for amount in state.get("tickets", {}).values())
+
+
+def get_next_lottery_draw_text(state):
+    started_raw = state.get("round_started_at")
+    try:
+        started = datetime.fromisoformat(started_raw)
+    except Exception:
+        started = now_utc()
+    next_draw = started + timedelta(seconds=get_lottery_interval_seconds())
+    remaining = max(0, int((next_draw - now_utc()).total_seconds()))
+    minutes = remaining // 60
+    seconds = remaining % 60
+    return f"{minutes}m {seconds}s"
+
+
+def choose_lottery_winner(tickets):
+    pool = []
+    for user_id, amount in tickets.items():
+        amount = int(amount or 0)
+        if amount > 0:
+            pool.extend([str(user_id)] * amount)
+    if not pool:
+        return None
+    return random.choice(pool)
+
+
+async def lottery_loop():
+    await bot.wait_until_ready()
+
+    if not is_lottery_enabled():
+        return
+
+    # Start checking often, but only draw when the configured interval has passed.
+    while not bot.is_closed():
+        try:
+            state = load_lottery()
+            started_raw = state.get("round_started_at")
+            try:
+                started = datetime.fromisoformat(started_raw)
+            except Exception:
+                state["round_started_at"] = now_utc().isoformat()
+                save_lottery(state)
+                started = now_utc()
+
+            if now_utc() >= started + timedelta(seconds=get_lottery_interval_seconds()):
+                await resolve_lottery_round()
+        except Exception as exc:
+            print(f"Lottery loop error: {exc}")
+
+        await asyncio.sleep(60)
+
+
+async def resolve_lottery_round():
+    state = load_lottery()
+    tickets = state.get("tickets", {})
+    total_tickets = get_lottery_total_tickets(state)
+    prize = int(state.get("pot", 0) or 0)
+
+    channel = None
+    channel_id = get_lottery_channel_id()
+    if channel_id:
+        channel = bot.get_channel(channel_id)
+
+    if total_tickets <= 0 or prize <= 0:
+        state = get_default_lottery_state()
+        state["last_draw_at"] = now_utc().isoformat()
+        save_lottery(state)
+        if channel and get_lottery_config().get("announce_empty_rounds", True):
+            embed = ui_embed("Hourly Lottery", "No tickets were purchased this round, so the lottery has reset.", "neutral")
+            add_field(embed, "Ticket Price", f"**{fmt_num(get_lottery_ticket_price())} Ryo** each", True)
+            add_field(embed, "Next Draw", "About **1 hour**", True)
+            await channel.send(embed=embed)
+        return
+
+    winner_id = choose_lottery_winner(tickets)
+    players = migrate_all_players(load_players())
+
+    if winner_id and winner_id in players:
+        players[winner_id]["ryo"] = int(players[winner_id].get("ryo", 0)) + prize
+        players[winner_id]["lottery_wins"] = int(players[winner_id].get("lottery_wins", 0)) + 1
+        players[winner_id]["lottery_ryo_won"] = int(players[winner_id].get("lottery_ryo_won", 0)) + prize
+        save_players(players)
+
+    winner_tickets = int(tickets.get(winner_id, 0) or 0) if winner_id else 0
+    old_rounds = int(state.get("total_rounds", 0) or 0)
+
+    state = get_default_lottery_state()
+    state["last_draw_at"] = now_utc().isoformat()
+    state["total_rounds"] = old_rounds + 1
+    state["last_winner_id"] = winner_id
+    state["last_winner_tickets"] = winner_tickets
+    state["last_prize"] = prize
+    save_lottery(state)
+
+    if channel:
+        if winner_id and winner_id in players:
+            embed = ui_embed("Hourly Lottery Winner", f"<@{winner_id}> won the hourly lottery!", "gold")
+            add_field(embed, "Prize", f"**{fmt_num(prize)} Ryo**", True)
+            add_field(embed, "Winning Tickets", f"**{fmt_num(winner_tickets)}** / {fmt_num(total_tickets)} total", True)
+            add_field(embed, "Next Round", f"Tickets are open again. Use `$ticket [amount]` to buy in for **{fmt_num(get_lottery_ticket_price())} Ryo** each.", False)
+            await channel.send(embed=embed)
+        else:
+            await channel.send("🎟️ Lottery draw failed because the winning player profile no longer exists. The pot has reset.")
 
 
 def migrate_player(player):
@@ -2800,7 +2986,7 @@ async def handle_turn_action(ctx, action_type, jutsu_name=None):
 @bot.event
 
 async def on_ready():
-    global RANDOM_EVENT_TASK_STARTED
+    global RANDOM_EVENT_TASK_STARTED, LOTTERY_TASK_STARTED
 
     print(f"Bot is online as {bot.user}")
     try:
@@ -2812,6 +2998,10 @@ async def on_ready():
     if not RANDOM_EVENT_TASK_STARTED:
         RANDOM_EVENT_TASK_STARTED = True
         bot.loop.create_task(random_event_loop())
+
+    if not LOTTERY_TASK_STARTED:
+        LOTTERY_TASK_STARTED = True
+        bot.loop.create_task(lottery_loop())
 
 
 @bot.command(name="start")
@@ -4750,6 +4940,92 @@ async def events_command(ctx):
     await ctx.send(embed=embed)
 
 
+@bot.command(name="lottery", aliases=["lotto"])
+async def lottery_command(ctx):
+    if not is_lottery_enabled():
+        await send_notice(ctx, "Lottery Disabled", "The lottery system is currently disabled.", "warning")
+        return
+
+    state = load_lottery()
+    tickets = state.get("tickets", {})
+    user_tickets = int(tickets.get(str(ctx.author.id), 0) or 0)
+    total_tickets = get_lottery_total_tickets(state)
+    pot = int(state.get("pot", 0) or 0)
+
+    embed = ui_embed("Hourly Lottery", "Buy tickets for a chance to win the full pot every hour.", "gold")
+    add_field(embed, "Ticket Price", f"**{fmt_num(get_lottery_ticket_price())} Ryo** each", True)
+    add_field(embed, "Current Pot", f"**{fmt_num(pot)} Ryo**", True)
+    add_field(embed, "Total Tickets", f"**{fmt_num(total_tickets)}**", True)
+    add_field(embed, "Your Tickets", f"**{fmt_num(user_tickets)}**", True)
+    add_field(embed, "Next Draw", f"About **{get_next_lottery_draw_text(state)}**", True)
+    add_field(embed, "Buy Tickets", "Use `$ticket [amount]` or `$buyticket [amount]`.", False)
+    last_winner = state.get("last_winner_id")
+    if last_winner:
+        add_field(embed, "Last Winner", f"<@{last_winner}> won **{fmt_num(state.get('last_prize', 0))} Ryo**.", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="ticket", aliases=["tickets", "buyticket", "buytickets"])
+async def ticket_command(ctx, amount: int = 1):
+    if not is_lottery_enabled():
+        await send_notice(ctx, "Lottery Disabled", "The lottery system is currently disabled.", "warning")
+        return
+
+    max_per_purchase = int(get_lottery_config().get("max_tickets_per_purchase", 100))
+    max_per_player = int(get_lottery_config().get("max_tickets_per_player", 500))
+
+    if amount <= 0:
+        await send_notice(ctx, "Invalid Ticket Amount", "Buy at least **1** ticket.", "warning")
+        return
+
+    if amount > max_per_purchase:
+        await send_notice(ctx, "Ticket Limit", f"You can buy up to **{fmt_num(max_per_purchase)}** tickets per purchase.", "warning")
+        return
+
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    player = players.get(user_id)
+
+    if not player:
+        await send_notice(ctx, "Profile Required", "Use `$start` before buying lottery tickets.", "warning")
+        return
+
+    state = load_lottery()
+    current_tickets = int(state.get("tickets", {}).get(user_id, 0) or 0)
+    if current_tickets + amount > max_per_player:
+        remaining = max(0, max_per_player - current_tickets)
+        await send_notice(ctx, "Ticket Limit", f"You can only hold **{fmt_num(max_per_player)}** tickets per round. You can still buy **{fmt_num(remaining)}** this round.", "warning")
+        return
+
+    ticket_price = get_lottery_ticket_price()
+    cost = ticket_price * amount
+    current_ryo = int(player.get("ryo", 0) or 0)
+
+    if current_ryo < cost:
+        await send_notice(ctx, "Not Enough Ryo", f"You need **{fmt_num(cost)} Ryo** for **{fmt_num(amount)}** ticket(s). You only have **{fmt_num(current_ryo)} Ryo**.", "warning")
+        return
+
+    player["ryo"] = current_ryo - cost
+    player["lottery_tickets_bought"] = int(player.get("lottery_tickets_bought", 0)) + amount
+    players[user_id] = player
+
+    state.setdefault("tickets", {})
+    state["tickets"][user_id] = current_tickets + amount
+    state["pot"] = int(state.get("pot", 0) or 0) + cost
+
+    save_players(players)
+    save_lottery(state)
+
+    total_tickets = get_lottery_total_tickets(state)
+    embed = ui_embed("Lottery Tickets Purchased", f"{ctx.author.mention} bought **{fmt_num(amount)}** ticket(s).", "success")
+    add_field(embed, "Cost", f"**{fmt_num(cost)} Ryo**", True)
+    add_field(embed, "Your Tickets", f"**{fmt_num(state['tickets'][user_id])}**", True)
+    add_field(embed, "Current Pot", f"**{fmt_num(state.get('pot', 0))} Ryo**", True)
+    add_field(embed, "Total Tickets", f"**{fmt_num(total_tickets)}**", True)
+    add_field(embed, "Next Draw", f"About **{get_next_lottery_draw_text(state)}**", True)
+    await ctx.send(embed=embed)
+
+
 @bot.command(name="balance", aliases=["ryo", "bal"])
 async def balance_command(ctx, member: discord.Member = None):
     players = migrate_all_players(load_players())
@@ -4926,7 +5202,7 @@ async def help_command(ctx):
     add_field(embed, "Start", "`$start` • `$roll` • `$reroll` • `$profile` • `$build` • `$stats`", False)
     add_field(embed, "Combat", "`$duel @user` • `$accept` • `$attack` • `$heavy` • `$taijutsu` • `$defend` • `$genjutsu` • `$jutsu <name>`", False)
     add_field(embed, "Progression", "`$train` • `$missions` • `$mission <name>` • `$daily` • `$weekly` • `$streak` • `$inventory`", False)
-    add_field(embed, "World", "`$event` • `$events` • `$tournament` • `$jointournament` • `$ladder` • `$villages`", False)
+    add_field(embed, "World", "`$event` • `$events` • `$lottery` • `$ticket [amount]` • `$tournament` • `$jointournament` • `$ladder` • `$villages`", False)
     add_field(embed, "Gacha", "`$banner` • `$gacha` • `$summon` • `$summon multi` • `$pull` • `$wish` • `$rarities`", False)
     add_field(embed, "Content", "`$clans` • `$kekkei` • `$dojutsu` • `$items` • `$evolutions` • `$evolve`", False)
     embed.set_footer(text=f"Laentaru Bot v{BOT_VERSION} • Use $info for system overview")
