@@ -108,6 +108,7 @@ ACTIVE_TOURNAMENT = None
 
 DUEL_REQUESTS = {}
 ACTIVE_DUELS = {}
+ACTIVE_TRADES = {}
 RANDOM_EVENT_TASK_STARTED = False
 LOTTERY_TASK_STARTED = False
 
@@ -3543,6 +3544,247 @@ async def train(ctx, *, stat_name: str = None):
     await ctx.send(embed=embed)
 
 
+
+
+# -----------------------------
+# Player Trade System
+# -----------------------------
+
+def normalize_item_name(search_text):
+    """Finds an item from config by exact or partial name, case-insensitive."""
+    if not search_text:
+        return None
+
+    cleaned = str(search_text).lower().strip()
+
+    for item_name in ITEMS:
+        if item_name.lower() == cleaned:
+            return item_name
+
+    for item_name in ITEMS:
+        lowered = item_name.lower()
+        if cleaned in lowered or lowered in cleaned:
+            return item_name
+
+    return None
+
+
+def get_trade_key(channel_id, sender_id, receiver_id):
+    return f"{channel_id}:{sender_id}:{receiver_id}"
+
+
+def find_pending_trade_for_user(user_id, channel_id=None):
+    user_id = str(user_id)
+    for trade_key, trade in ACTIVE_TRADES.items():
+        if channel_id is not None and trade.get("channel_id") != channel_id:
+            continue
+        if user_id in [trade.get("sender_id"), trade.get("receiver_id")]:
+            return trade_key, trade
+    return None, None
+
+
+def build_trade_summary(trade):
+    if trade.get("type") == "ryo":
+        return f"**{fmt_num(trade.get('amount', 0))} Ryo**"
+    return f"**{trade.get('item_name')} x{fmt_num(trade.get('amount', 0))}**"
+
+
+def player_has_trade_assets(player, trade):
+    amount = int(trade.get("amount", 0) or 0)
+    if amount <= 0:
+        return False, "Trade amount must be greater than 0."
+
+    if trade.get("type") == "ryo":
+        current_ryo = int(player.get("ryo", 0) or 0)
+        if current_ryo < amount:
+            return False, f"You only have **{fmt_num(current_ryo)} Ryo**."
+        return True, None
+
+    item_name = trade.get("item_name")
+    inventory = player.get("inventory", {}) or {}
+    owned = int(inventory.get(item_name, 0) or 0)
+    if owned < amount:
+        return False, f"You only have **{item_name} x{fmt_num(owned)}**."
+    return True, None
+
+
+def execute_trade(players, trade):
+    sender_id = str(trade["sender_id"])
+    receiver_id = str(trade["receiver_id"])
+    sender = players[sender_id]
+    receiver = players[receiver_id]
+    amount = int(trade.get("amount", 0) or 0)
+
+    ok, reason = player_has_trade_assets(sender, trade)
+    if not ok:
+        return False, reason
+
+    if trade.get("type") == "ryo":
+        sender["ryo"] = int(sender.get("ryo", 0) or 0) - amount
+        receiver["ryo"] = int(receiver.get("ryo", 0) or 0) + amount
+        return True, None
+
+    item_name = trade.get("item_name")
+    if not remove_item(sender, item_name, amount):
+        return False, f"You no longer have enough **{item_name}** to complete this trade."
+    add_item(receiver, item_name, amount)
+    return True, None
+
+
+@bot.command(name="trade")
+async def trade(ctx, member: discord.Member, trade_type: str = None, amount: int = None, *, item_name: str = None):
+    """Creates a trade offer.
+
+    Usage:
+    $trade @user ryo 100
+    $trade @user item 2 Kunai
+    $trade @user item 1 Tailed Beast Chakra Fragment
+    """
+    players = migrate_all_players(load_players())
+    sender_id = str(ctx.author.id)
+    receiver_id = str(member.id)
+
+    if sender_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first to create your shinobi profile.", "warning")
+        return
+
+    if receiver_id not in players:
+        await send_notice(ctx, "Trade Failed", f"{member.mention} does not have a profile yet.", "warning")
+        return
+
+    if member.bot or member.id == ctx.author.id:
+        await send_notice(ctx, "Invalid Trade", "You need to trade with another real player.", "warning")
+        return
+
+    duel_key, _ = find_active_duel_for_user(ctx.author.id, ctx.channel.id)
+    target_duel_key, _ = find_active_duel_for_user(member.id, ctx.channel.id)
+    if duel_key or target_duel_key:
+        await send_notice(ctx, "Trade Blocked", "Players cannot trade while involved in an active duel.", "warning")
+        return
+
+    existing_key, existing_trade = find_pending_trade_for_user(sender_id, ctx.channel.id)
+    if existing_trade:
+        await send_notice(ctx, "Trade Already Pending", "Finish or cancel your current trade first with `$accepttrade`, `$denytrade`, or `$canceltrade`.", "warning")
+        return
+
+    existing_key, existing_trade = find_pending_trade_for_user(receiver_id, ctx.channel.id)
+    if existing_trade:
+        await send_notice(ctx, "Target Has Pending Trade", f"{member.mention} already has a pending trade in this channel.", "warning")
+        return
+
+    if not trade_type or amount is None:
+        await send_notice(ctx, "Trade Usage", "Use `$trade @user ryo 100` or `$trade @user item 2 Kunai`.", "info")
+        return
+
+    trade_type = trade_type.lower().strip()
+    if amount <= 0:
+        await send_notice(ctx, "Invalid Amount", "Trade amount must be greater than 0.", "warning")
+        return
+
+    if trade_type in ["ryo", "money", "cash"]:
+        trade_data = {
+            "type": "ryo",
+            "amount": int(amount),
+            "item_name": None,
+        }
+    elif trade_type in ["item", "items"]:
+        matched_item = normalize_item_name(item_name)
+        if not matched_item:
+            await send_notice(ctx, "Item Not Found", "That item does not exist in config.json. Check spelling with `$items` or `$inventory`.", "warning")
+            return
+        trade_data = {
+            "type": "item",
+            "amount": int(amount),
+            "item_name": matched_item,
+        }
+    else:
+        await send_notice(ctx, "Trade Usage", "Trade type must be `ryo` or `item`. Example: `$trade @user item 1 Kunai`", "info")
+        return
+
+    trade_offer = {
+        "channel_id": ctx.channel.id,
+        "sender_id": sender_id,
+        "receiver_id": receiver_id,
+        "created_at": now_utc().isoformat(),
+        **trade_data,
+    }
+
+    ok, reason = player_has_trade_assets(players[sender_id], trade_offer)
+    if not ok:
+        await send_notice(ctx, "Trade Failed", reason, "warning")
+        return
+
+    trade_key = get_trade_key(ctx.channel.id, sender_id, receiver_id)
+    ACTIVE_TRADES[trade_key] = trade_offer
+
+    embed = ui_embed("Trade Offer Created", f"{ctx.author.mention} wants to send {member.mention} {build_trade_summary(trade_offer)}.", "gold")
+    add_field(embed, "Receiver", f"{member.mention}, use `$accepttrade` to accept or `$denytrade` to decline.", False)
+    add_field(embed, "Sender", "Use `$canceltrade` to cancel before it is accepted.", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="accepttrade", aliases=["tradeaccept"])
+async def accept_trade(ctx):
+    players = migrate_all_players(load_players())
+    receiver_id = str(ctx.author.id)
+
+    trade_key = None
+    trade = None
+    for key, pending in ACTIVE_TRADES.items():
+        if pending.get("receiver_id") == receiver_id and pending.get("channel_id") == ctx.channel.id:
+            trade_key = key
+            trade = pending
+            break
+
+    if not trade:
+        await send_notice(ctx, "No Trade Found", "You do not have a pending trade to accept in this channel.", "warning")
+        return
+
+    sender_id = str(trade.get("sender_id"))
+    if sender_id not in players or receiver_id not in players:
+        ACTIVE_TRADES.pop(trade_key, None)
+        await send_notice(ctx, "Trade Cancelled", "One of the trade profiles no longer exists.", "danger")
+        return
+
+    ok, reason = execute_trade(players, trade)
+    if not ok:
+        ACTIVE_TRADES.pop(trade_key, None)
+        await send_notice(ctx, "Trade Cancelled", reason, "warning")
+        return
+
+    save_players(players)
+    ACTIVE_TRADES.pop(trade_key, None)
+
+    embed = ui_embed("Trade Complete", f"<@{sender_id}> sent {ctx.author.mention} {build_trade_summary(trade)}.", "success")
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="denytrade", aliases=["declinetrade", "tradedeny"])
+async def deny_trade(ctx):
+    receiver_id = str(ctx.author.id)
+
+    for key, trade in list(ACTIVE_TRADES.items()):
+        if trade.get("receiver_id") == receiver_id and trade.get("channel_id") == ctx.channel.id:
+            ACTIVE_TRADES.pop(key, None)
+            await send_notice(ctx, "Trade Declined", f"{ctx.author.mention} declined the trade offer.", "neutral")
+            return
+
+    await send_notice(ctx, "No Trade Found", "You do not have a pending trade to decline in this channel.", "warning")
+
+
+@bot.command(name="canceltrade", aliases=["tradecancel"])
+async def cancel_trade(ctx):
+    sender_id = str(ctx.author.id)
+
+    for key, trade in list(ACTIVE_TRADES.items()):
+        if trade.get("sender_id") == sender_id and trade.get("channel_id") == ctx.channel.id:
+            ACTIVE_TRADES.pop(key, None)
+            await send_notice(ctx, "Trade Cancelled", "Your pending trade offer was cancelled.", "neutral")
+            return
+
+    await send_notice(ctx, "No Trade Found", "You do not have a pending trade to cancel in this channel.", "warning")
+
+
 @bot.command(name="inventory")
 async def inventory(ctx):
     players = migrate_all_players(load_players())
@@ -5201,8 +5443,9 @@ async def help_command(ctx):
     embed = ui_embed("Laentaru Bot Help", "Compact command menu for v1.9.0.", "brand")
     add_field(embed, "Start", "`$start` • `$roll` • `$reroll` • `$profile` • `$build` • `$stats`", False)
     add_field(embed, "Combat", "`$duel @user` • `$accept` • `$attack` • `$heavy` • `$taijutsu` • `$defend` • `$genjutsu` • `$jutsu <name>`", False)
-    add_field(embed, "Progression", "`$train` • `$missions` • `$mission <name>` • `$daily` • `$weekly` • `$streak` • `$inventory`", False)
+    add_field(embed, "Progression", "`$train` • `$missions` • `$mission <name>` • `$daily` • `$weekly` • `$streak` • `$inventory` • `$trade`", False)
     add_field(embed, "World", "`$event` • `$events` • `$lottery` • `$ticket [amount]` • `$tournament` • `$jointournament` • `$ladder` • `$villages`", False)
+    add_field(embed, "Trading", "`$trade @user ryo 100` • `$trade @user item 1 Kunai` • `$accepttrade` • `$denytrade` • `$canceltrade`", False)
     add_field(embed, "Gacha", "`$banner` • `$gacha` • `$summon` • `$summon multi` • `$pull` • `$wish` • `$rarities`", False)
     add_field(embed, "Content", "`$clans` • `$kekkei` • `$dojutsu` • `$items` • `$evolutions` • `$evolve`", False)
     embed.set_footer(text=f"Laentaru Bot v{BOT_VERSION} • Use $info for system overview")
