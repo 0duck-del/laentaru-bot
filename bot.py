@@ -3818,85 +3818,92 @@ async def inventory(ctx):
 
 @bot.command(name="cooldowns", aliases=["cd", "timers"])
 async def cooldowns(ctx):
+    players = migrate_all_players(load_players())
     user_id = str(ctx.author.id)
 
-    player = players.get(user_id)
-    if not player:
-        await ctx.send("You don't have a profile yet. Use `$start` first.")
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first to create your shinobi profile.", "warning")
         return
 
-    now = datetime.utcnow()
+    player = players[user_id]
+    now = now_utc()
+    econ = CONFIG.get("ECONOMY", {})
 
-    cooldown_messages = []
+    def parse_time(value):
+        if not value:
+            return None
+        try:
+            parsed = datetime.fromisoformat(value)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed
+        except Exception:
+            return None
 
-    # TRAINING
-    train_last = player.get("last_train")
-    if train_last:
-        train_time = datetime.fromisoformat(train_last)
-        train_cd = timedelta(minutes=CONFIG["TRAINING_COOLDOWN_MINUTES"])
+    def format_remaining(delta):
+        total_seconds = max(0, int(delta.total_seconds()))
+        days, remainder = divmod(total_seconds, 86400)
+        hours, remainder = divmod(remainder, 3600)
+        minutes, seconds = divmod(remainder, 60)
 
-        remaining = (train_time + train_cd) - now
+        if days > 0:
+            return f"{days}d {hours}h {minutes}m"
+        if hours > 0:
+            return f"{hours}h {minutes}m {seconds}s"
+        return f"{minutes}m {seconds}s"
 
-        if remaining.total_seconds() > 0:
-            mins, secs = divmod(int(remaining.total_seconds()), 60)
-            cooldown_messages.append(
-                f"🏋️ Training: `{mins}m {secs}s` remaining"
-            )
-        else:
-            cooldown_messages.append("🏋️ Training: `Ready`")
-    else:
-        cooldown_messages.append("🏋️ Training: `Ready`")
+    def cooldown_line(label, icon, last_key, duration):
+        last_used = parse_time(player.get(last_key))
+        if not last_used:
+            return f"{icon} **{label}:** `Ready`"
 
-    # DAILY
-    daily_last = player.get("last_daily")
-    if daily_last:
-        daily_time = datetime.fromisoformat(daily_last)
-        daily_cd = timedelta(hours=CONFIG["ECONOMY"]["daily_cooldown_hours"])
+        ready_at = last_used + duration
+        if now >= ready_at:
+            return f"{icon} **{label}:** `Ready`"
 
-        remaining = (daily_time + daily_cd) - now
+        return f"{icon} **{label}:** `{format_remaining(ready_at - now)} remaining`"
 
-        if remaining.total_seconds() > 0:
-            hours, rem = divmod(int(remaining.total_seconds()), 3600)
-            mins, secs = divmod(rem, 60)
+    cooldown_messages = [
+        cooldown_line(
+            "Training",
+            "🏋️",
+            "last_training",
+            timedelta(minutes=int(CONFIG.get("TRAINING_COOLDOWN_MINUTES", TRAINING_COOLDOWN_MINUTES))),
+        ),
+        cooldown_line(
+            "Daily",
+            "💰",
+            "last_daily",
+            timedelta(hours=int(econ.get("daily_cooldown_hours", 20))),
+        ),
+        cooldown_line(
+            "Weekly",
+            "📅",
+            "last_weekly",
+            timedelta(hours=int(econ.get("weekly_cooldown_hours", 156))),
+        ),
+    ]
 
-            cooldown_messages.append(
-                f"💰 Daily: `{hours}h {mins}m {secs}s` remaining"
-            )
-        else:
-            cooldown_messages.append("💰 Daily: `Ready`")
-    else:
-        cooldown_messages.append("💰 Daily: `Ready`")
+    mission_cooldowns = player.get("mission_cooldowns", {})
+    if isinstance(mission_cooldowns, dict) and mission_cooldowns:
+        mission_lines = []
+        for mission_name, ready_value in sorted(mission_cooldowns.items()):
+            ready_at = parse_time(ready_value)
+            if not ready_at or now >= ready_at:
+                mission_lines.append(f"🧾 **{mission_name}:** `Ready`")
+            else:
+                mission_lines.append(f"🧾 **{mission_name}:** `{format_remaining(ready_at - now)} remaining`")
+        cooldown_messages.extend(mission_lines[:8])
 
-    # WEEKLY
-    weekly_last = player.get("last_weekly")
-    if weekly_last:
-        weekly_time = datetime.fromisoformat(weekly_last)
-        weekly_cd = timedelta(hours=CONFIG["ECONOMY"]["weekly_cooldown_hours"])
-
-        remaining = (weekly_time + weekly_cd) - now
-
-        if remaining.total_seconds() > 0:
-            days, rem = divmod(int(remaining.total_seconds()), 86400)
-            hours, rem = divmod(rem, 3600)
-            mins, secs = divmod(rem, 60)
-
-            cooldown_messages.append(
-                f"📅 Weekly: `{days}d {hours}h {mins}m {secs}s` remaining"
-            )
-        else:
-            cooldown_messages.append("📅 Weekly: `Ready`")
-    else:
-        cooldown_messages.append("📅 Weekly: `Ready`")
-
-    embed = discord.Embed(
-        title=f"{ctx.author.display_name}'s Cooldowns",
-        description="\n".join(cooldown_messages),
-        color=discord.Color.orange()
+    embed = ui_embed(
+        f"{ctx.author.display_name}'s Cooldowns",
+        "\n".join(cooldown_messages),
+        "info",
     )
-
-    embed.set_footer(text=f"Laentaru Bot v{CONFIG.get('BOT_VERSION', 'Unknown')}")
-
+    add_field(embed, "Tip", "Use this anytime to check when your main rewards and training are ready again.", False)
+    save_players(players)
     await ctx.send(embed=embed)
+
 
 @bot.command(name="use")
 async def use_item(ctx, *, item_name: str):
