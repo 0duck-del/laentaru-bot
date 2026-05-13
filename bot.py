@@ -3816,6 +3816,87 @@ async def inventory(ctx):
 
     await ctx.send(embed=embed)
 
+@bot.command(name="cooldowns", aliases=["cd", "timers"])
+async def cooldowns(ctx):
+    user_id = str(ctx.author.id)
+
+    player = players.get(user_id)
+    if not player:
+        await ctx.send("You don't have a profile yet. Use `$start` first.")
+        return
+
+    now = datetime.utcnow()
+
+    cooldown_messages = []
+
+    # TRAINING
+    train_last = player.get("last_train")
+    if train_last:
+        train_time = datetime.fromisoformat(train_last)
+        train_cd = timedelta(minutes=CONFIG["TRAINING_COOLDOWN_MINUTES"])
+
+        remaining = (train_time + train_cd) - now
+
+        if remaining.total_seconds() > 0:
+            mins, secs = divmod(int(remaining.total_seconds()), 60)
+            cooldown_messages.append(
+                f"🏋️ Training: `{mins}m {secs}s` remaining"
+            )
+        else:
+            cooldown_messages.append("🏋️ Training: `Ready`")
+    else:
+        cooldown_messages.append("🏋️ Training: `Ready`")
+
+    # DAILY
+    daily_last = player.get("last_daily")
+    if daily_last:
+        daily_time = datetime.fromisoformat(daily_last)
+        daily_cd = timedelta(hours=CONFIG["ECONOMY"]["daily_cooldown_hours"])
+
+        remaining = (daily_time + daily_cd) - now
+
+        if remaining.total_seconds() > 0:
+            hours, rem = divmod(int(remaining.total_seconds()), 3600)
+            mins, secs = divmod(rem, 60)
+
+            cooldown_messages.append(
+                f"💰 Daily: `{hours}h {mins}m {secs}s` remaining"
+            )
+        else:
+            cooldown_messages.append("💰 Daily: `Ready`")
+    else:
+        cooldown_messages.append("💰 Daily: `Ready`")
+
+    # WEEKLY
+    weekly_last = player.get("last_weekly")
+    if weekly_last:
+        weekly_time = datetime.fromisoformat(weekly_last)
+        weekly_cd = timedelta(hours=CONFIG["ECONOMY"]["weekly_cooldown_hours"])
+
+        remaining = (weekly_time + weekly_cd) - now
+
+        if remaining.total_seconds() > 0:
+            days, rem = divmod(int(remaining.total_seconds()), 86400)
+            hours, rem = divmod(rem, 3600)
+            mins, secs = divmod(rem, 60)
+
+            cooldown_messages.append(
+                f"📅 Weekly: `{days}d {hours}h {mins}m {secs}s` remaining"
+            )
+        else:
+            cooldown_messages.append("📅 Weekly: `Ready`")
+    else:
+        cooldown_messages.append("📅 Weekly: `Ready`")
+
+    embed = discord.Embed(
+        title=f"{ctx.author.display_name}'s Cooldowns",
+        description="\n".join(cooldown_messages),
+        color=discord.Color.orange()
+    )
+
+    embed.set_footer(text=f"Laentaru Bot v{CONFIG.get('BOT_VERSION', 'Unknown')}")
+
+    await ctx.send(embed=embed)
 
 @bot.command(name="use")
 async def use_item(ctx, *, item_name: str):
