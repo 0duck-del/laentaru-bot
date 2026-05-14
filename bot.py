@@ -49,6 +49,7 @@ def get_data_dir():
 DATA_DIR = get_data_dir()
 DATA_FILE = DATA_DIR / "players.json"
 LOTTERY_FILE = DATA_DIR / "lottery.json"
+MARKET_FILE = DATA_DIR / "market.json"
 CONFIG_FILE = Path("config.json")
 
 if not DATA_FILE.exists():
@@ -770,18 +771,30 @@ def get_tailed_beast_multiplier(player):
 
 
 def get_effective_player(player):
-    """Returns a temporary combat copy with active tailed-beast boosts applied."""
-    multiplier = get_tailed_beast_multiplier(player)
-    if multiplier <= 1:
+    """Returns a temporary combat copy with active trait effects applied.
+
+    Active effects are multiplicative:
+    - Jinchuriki / tailed-beast boosts increase traits.
+    - Curse Mark buffs increase traits.
+    - Curse Mark debuffs reduce traits.
+
+    The old version only applied tailed-beast boosts, so Curse Mark data was
+    displayed but not reliably used in combat/rating calculations.
+    """
+    tailed_beast_multiplier = get_tailed_beast_multiplier(player)
+    curse_multiplier = get_curse_mark_multiplier(player)
+    multiplier = tailed_beast_multiplier * curse_multiplier
+
+    if abs(multiplier - 1.0) < 0.0001:
         return player
 
     effective = dict(player)
     effective["stats"] = {
-        name: int(value * multiplier)
+        name: max(1, int(value * multiplier))
         for name, value in player.get("stats", {}).items()
     }
     effective["affinities"] = {
-        name: int(value * multiplier)
+        name: max(1, int(value * multiplier))
         for name, value in (player.get("affinities") or {}).items()
     }
     return effective
@@ -1202,6 +1215,18 @@ def get_sharingan_level_name(player):
     if not has_player_bloodline(player, "Sharingan"):
         return None
 
+    # If the newer Kekkei Evolution tree is configured for Sharingan, use that
+    # as the single source of truth. This prevents players from having one
+    # Sharingan from legacy training progression and a second Sharingan from
+    # the evolution system.
+    if CONFIG.get("KEKKEI_EVOLUTION", {}).get("enabled", False):
+        paths = CONFIG.get("KEKKEI_EVOLUTION", {}).get("paths", {})
+        if "Sharingan" in paths and "get_kekkei_stage_name" in globals():
+            try:
+                return get_kekkei_stage_name(player, "Sharingan") or "Sharingan"
+            except Exception:
+                pass
+
     sharingan_data = CONFIG.get("SHARINGAN", {})
     levels = sharingan_data.get("levels", [])
 
@@ -1246,6 +1271,13 @@ def try_unlock_training_kekkei(player):
 def try_level_sharingan(player, source="training"):
     if not has_player_bloodline(player, "Sharingan"):
         return None
+
+    # Do not run the legacy Sharingan leveling system when the modern Kekkei
+    # Evolution tree owns Sharingan progression. Otherwise players can end up
+    # with two parallel Sharingan tracks.
+    if CONFIG.get("KEKKEI_EVOLUTION", {}).get("enabled", False):
+        if "Sharingan" in CONFIG.get("KEKKEI_EVOLUTION", {}).get("paths", {}):
+            return None
 
     config = CONFIG.get("SHARINGAN", {})
 
@@ -3546,6 +3578,227 @@ async def train(ctx, *, stat_name: str = None):
 
 
 
+
+# -----------------------------
+# Player Market System
+# -----------------------------
+
+def get_market_config():
+    return CONFIG.get("MARKET", {})
+
+
+def get_market_channel_id():
+    channel_id = get_market_config().get("channel_id")
+    return int(channel_id) if channel_id else 0
+
+
+def load_market():
+    if not MARKET_FILE.exists():
+        state = {"next_id": 1, "listings": {}}
+        save_market(state)
+        return state
+    try:
+        with open(MARKET_FILE, "r", encoding="utf-8") as file:
+            state = json.load(file)
+    except json.JSONDecodeError:
+        backup_file = MARKET_FILE.with_suffix(f".broken-{int(datetime.now().timestamp())}.json")
+        MARKET_FILE.replace(backup_file)
+        state = {"next_id": 1, "listings": {}}
+        save_market(state)
+        print(f"WARNING: market.json was invalid JSON. Backed it up to {backup_file}")
+        return state
+    if not isinstance(state, dict):
+        state = {}
+    state.setdefault("next_id", 1)
+    state.setdefault("listings", {})
+    if not isinstance(state["listings"], dict):
+        state["listings"] = {}
+    return state
+
+
+def save_market(state):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_file = MARKET_FILE.with_suffix(".json.tmp")
+    with open(tmp_file, "w", encoding="utf-8") as file:
+        json.dump(state, file, indent=4)
+    tmp_file.replace(MARKET_FILE)
+
+
+def market_listing_summary(listing):
+    return (
+        f"**{listing.get('item_name')} x{fmt_num(listing.get('amount', 1))}**\n"
+        f"Price: **{fmt_num(listing.get('price', 0))} Ryo**\n"
+        f"Seller: <@{listing.get('seller_id')}>\n"
+        f"Market ID: `{listing.get('id')}`"
+    )
+
+
+def build_market_embed(title, listing, tone="gold"):
+    embed = ui_embed(title, market_listing_summary(listing), tone)
+    add_field(embed, "Buy", f"Use `$market buy {listing.get('id')}` to purchase this listing.", False)
+    return embed
+
+
+def parse_market_sell_args(args):
+    parts = str(args or "").split()
+    if len(parts) < 2:
+        return None, None, None
+
+    amount = 1
+    price = None
+
+    # Supported:
+    # $market sell Kunai 100
+    # $market sell Kunai 100 2
+    # $market sell 2 Kunai 100
+    if parts[0].isdigit() and len(parts) >= 3:
+        amount = int(parts[0])
+        price = int(parts[-1]) if parts[-1].isdigit() else None
+        item_text = " ".join(parts[1:-1])
+    else:
+        price = int(parts[-1]) if parts[-1].isdigit() else None
+        if len(parts) >= 3 and parts[-2].isdigit():
+            amount = int(parts[-1])
+            price = int(parts[-2])
+            item_text = " ".join(parts[:-2])
+        else:
+            item_text = " ".join(parts[:-1])
+
+    if not item_text or not price:
+        return None, None, None
+    return item_text, price, amount
+
+
+@bot.command(name="market", aliases=["marketplace"])
+async def market(ctx, action: str = None, *, args: str = None):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first to create your shinobi profile.", "warning")
+        return
+
+    state = load_market()
+    action = (action or "list").lower().strip()
+
+    if action in ["list", "shop", "view"]:
+        listings = [listing for listing in state.get("listings", {}).values() if listing.get("status") == "active"]
+        if not listings:
+            await send_notice(ctx, "Market Empty", "No active listings right now.", "info")
+            return
+        embed = ui_embed("Player Market", "Active player listings.", "gold")
+        for listing in sorted(listings, key=lambda item: int(item.get("id", 0)))[:10]:
+            add_field(embed, f"Market ID {listing.get('id')}", market_listing_summary(listing), False)
+        await ctx.send(embed=embed)
+        return
+
+    if action == "sell":
+        item_text, price, amount = parse_market_sell_args(args)
+        if not item_text or not price or not amount:
+            await send_notice(ctx, "Market Usage", "Use `$market sell <item> <price> [amount]` or `$market sell [amount] <item> <price>`.", "info")
+            return
+        if price <= 0 or amount <= 0:
+            await send_notice(ctx, "Invalid Listing", "Price and amount must be greater than 0.", "warning")
+            return
+
+        item_name = normalize_item_name(item_text)
+        if not item_name:
+            await send_notice(ctx, "Item Not Found", "That item does not exist in config.json. Check spelling with `$items` or `$inventory`.", "warning")
+            return
+
+        seller = players[user_id]
+        inventory = seller.get("inventory", {}) or {}
+        if int(inventory.get(item_name, 0) or 0) < amount:
+            await send_notice(ctx, "Not Enough Items", f"You only have **{item_name} x{fmt_num(inventory.get(item_name, 0))}**.", "warning")
+            return
+
+        # Escrow the item immediately so sellers cannot spend/sell it twice.
+        remove_item(seller, item_name, amount)
+        market_id = str(int(state.get("next_id", 1)))
+        state["next_id"] = int(state.get("next_id", 1)) + 1
+        listing = {
+            "id": market_id,
+            "seller_id": user_id,
+            "seller_name": ctx.author.name,
+            "item_name": item_name,
+            "amount": int(amount),
+            "price": int(price),
+            "status": "active",
+            "created_at": now_utc().isoformat(),
+            "source_channel_id": ctx.channel.id,
+        }
+        state.setdefault("listings", {})[market_id] = listing
+        save_players(players)
+        save_market(state)
+
+        embed = build_market_embed("Market Listing Created", listing, "gold")
+        market_channel_id = get_market_channel_id()
+        market_channel = bot.get_channel(market_channel_id) if market_channel_id else ctx.channel
+        if market_channel and market_channel.id != ctx.channel.id:
+            await market_channel.send(embed=embed)
+            await send_notice(ctx, "Market Listing Created", f"Posted **{item_name} x{fmt_num(amount)}** for **{fmt_num(price)} Ryo** in {market_channel.mention}. Market ID: `{market_id}`", "success")
+        else:
+            await ctx.send(embed=embed)
+        return
+
+    if action == "buy":
+        market_id = str(args or "").strip()
+        listing = state.get("listings", {}).get(market_id)
+        if not listing or listing.get("status") != "active":
+            await send_notice(ctx, "Listing Not Found", "That Market ID does not exist or is no longer active.", "warning")
+            return
+        if listing.get("seller_id") == user_id:
+            await send_notice(ctx, "Invalid Purchase", "You cannot buy your own market listing.", "warning")
+            return
+
+        buyer = players[user_id]
+        seller_id = str(listing.get("seller_id"))
+        if seller_id not in players:
+            # Seller vanished; return escrow to nobody is impossible, so cancel safely.
+            listing["status"] = "cancelled_missing_seller"
+            save_market(state)
+            await send_notice(ctx, "Listing Cancelled", "The seller profile no longer exists, so this listing was cancelled.", "warning")
+            return
+
+        price = int(listing.get("price", 0) or 0)
+        if int(buyer.get("ryo", 0) or 0) < price:
+            await send_notice(ctx, "Not Enough Ryo", f"You need **{fmt_num(price)} Ryo** to buy this listing. You have **{fmt_num(buyer.get('ryo', 0))} Ryo**.", "warning")
+            return
+
+        buyer["ryo"] = int(buyer.get("ryo", 0) or 0) - price
+        players[seller_id]["ryo"] = int(players[seller_id].get("ryo", 0) or 0) + price
+        add_item(buyer, listing.get("item_name"), int(listing.get("amount", 1)))
+        listing["status"] = "sold"
+        listing["buyer_id"] = user_id
+        listing["sold_at"] = now_utc().isoformat()
+        save_players(players)
+        save_market(state)
+
+        embed = ui_embed("Market Purchase Complete", f"{ctx.author.mention} bought **{listing.get('item_name')} x{fmt_num(listing.get('amount', 1))}** from <@{seller_id}> for **{fmt_num(price)} Ryo**.", "success")
+        await ctx.send(embed=embed)
+        return
+
+    if action == "cancel":
+        market_id = str(args or "").strip()
+        listing = state.get("listings", {}).get(market_id)
+        if not listing or listing.get("status") != "active":
+            await send_notice(ctx, "Listing Not Found", "That Market ID does not exist or is no longer active.", "warning")
+            return
+        if listing.get("seller_id") != user_id and ctx.author.id not in DEV_USER_IDS:
+            await send_notice(ctx, "Cancel Blocked", "Only the seller or a developer can cancel this listing.", "warning")
+            return
+        seller_id = str(listing.get("seller_id"))
+        if seller_id in players:
+            add_item(players[seller_id], listing.get("item_name"), int(listing.get("amount", 1)))
+            save_players(players)
+        listing["status"] = "cancelled"
+        listing["cancelled_at"] = now_utc().isoformat()
+        save_market(state)
+        await send_notice(ctx, "Listing Cancelled", f"Market ID `{market_id}` was cancelled and the item was returned to the seller.", "neutral")
+        return
+
+    await send_notice(ctx, "Market Usage", "Use `$market`, `$market sell <item> <price> [amount]`, `$market buy <id>`, or `$market cancel <id>`.", "info")
+
 # -----------------------------
 # Player Trade System
 # -----------------------------
@@ -3887,8 +4140,15 @@ async def cooldowns(ctx):
     mission_cooldowns = player.get("mission_cooldowns", {})
     if isinstance(mission_cooldowns, dict) and mission_cooldowns:
         mission_lines = []
-        for mission_name, ready_value in sorted(mission_cooldowns.items()):
-            ready_at = parse_time(ready_value)
+        available_missions = get_available_missions() if "get_available_missions" in globals() else {}
+        default_minutes = int(get_mission_config().get("default_cooldown_minutes", 60)) if "get_mission_config" in globals() else 60
+
+        for mission_name, last_value in sorted(mission_cooldowns.items()):
+            last_run = parse_time(last_value)
+            mission_data = available_missions.get(mission_name, {}) if isinstance(available_missions, dict) else {}
+            cooldown_minutes = int(mission_data.get("cooldown_minutes", default_minutes))
+            ready_at = last_run + timedelta(minutes=cooldown_minutes) if last_run else None
+
             if not ready_at or now >= ready_at:
                 mission_lines.append(f"🧾 **{mission_name}:** `Ready`")
             else:
@@ -5533,7 +5793,7 @@ async def help_command(ctx):
     add_field(embed, "Combat", "`$duel @user` • `$accept` • `$attack` • `$heavy` • `$taijutsu` • `$defend` • `$genjutsu` • `$jutsu <name>`", False)
     add_field(embed, "Progression", "`$train` • `$missions` • `$mission <name>` • `$daily` • `$weekly` • `$streak` • `$inventory` • `$trade`", False)
     add_field(embed, "World", "`$event` • `$events` • `$lottery` • `$ticket [amount]` • `$tournament` • `$jointournament` • `$ladder` • `$villages`", False)
-    add_field(embed, "Trading", "`$trade @user ryo 100` • `$trade @user item 1 Kunai` • `$accepttrade` • `$denytrade` • `$canceltrade`", False)
+    add_field(embed, "Trading", "`$trade @user ryo 100` • `$trade @user item 1 Kunai` • `$market` • `$market sell <item> <price> [amount]` • `$market buy <id>`", False)
     add_field(embed, "Gacha", "`$banner` • `$gacha` • `$summon` • `$summon multi` • `$pull` • `$wish` • `$rarities`", False)
     add_field(embed, "Content", "`$clans` • `$kekkei` • `$dojutsu` • `$items` • `$evolutions` • `$evolve`", False)
     embed.set_footer(text=f"Laentaru Bot v{BOT_VERSION} • Use $info for system overview")
