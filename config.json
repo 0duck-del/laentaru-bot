@@ -1461,7 +1461,7 @@
             }
         }
     },
-    "BOT_VERSION": "1.9.0-chakra-balance",
+    "BOT_VERSION": "1.9.1-market-fixes",
     "REROLLS_PER_PLAYER": 3,
     "TOURNAMENT": {
         "min_win_chance": 0.18,
@@ -3343,5 +3343,10 @@
         "max_tickets_per_purchase": 1000,
         "max_tickets_per_player": 5000,
         "announce_empty_rounds": true
+    },
+    "MARKET": {
+        "enabled": true,
+        "channel_id": 0,
+        "note": "Set channel_id to your market channel ID. If 0/missing, listings post in the command channel."
     }
 }
