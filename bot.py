@@ -49,6 +49,7 @@ def get_data_dir():
 DATA_DIR = get_data_dir()
 DATA_FILE = DATA_DIR / "players.json"
 LOTTERY_FILE = DATA_DIR / "lottery.json"
+MARKET_FILE = DATA_DIR / "market.json"
 CONFIG_FILE = Path("config.json")
 
 if not DATA_FILE.exists():
@@ -77,7 +78,7 @@ def validate_config(config):
 
 CONFIG = load_config()
 validate_config(CONFIG)
-BOT_VERSION = CONFIG.get("BOT_VERSION", "1.4")
+BOT_VERSION = CONFIG.get("BOT_VERSION", "2.1.0")
 REROLLS_PER_PLAYER = int(CONFIG.get("REROLLS_PER_PLAYER", 3))
 
 # Everything below is sourced from config.json so you can balance the bot without editing code.
@@ -109,6 +110,7 @@ ACTIVE_TOURNAMENT = None
 DUEL_REQUESTS = {}
 ACTIVE_DUELS = {}
 ACTIVE_TRADES = {}
+ACTIVE_BEAST_DUELS = {}
 RANDOM_EVENT_TASK_STARTED = False
 LOTTERY_TASK_STARTED = False
 
@@ -203,6 +205,53 @@ def kv_line(label, value):
 def add_field(embed, name, value, inline=False):
     embed.add_field(name=name, value=truncate_text(value or "None"), inline=inline)
     return embed
+
+
+async def send_paginated_embeds(ctx, pages, start_index=0):
+    """Modern reaction paginator for embed pages."""
+    if not pages:
+        await send_notice(ctx, "Nothing To Show", "No pages were generated.", "warning")
+        return
+
+    index = max(0, min(start_index, len(pages) - 1))
+    message = await ctx.send(embed=pages[index])
+
+    if len(pages) <= 1:
+        return
+
+    controls = ["⬅️", "➡️", "⏹️"]
+    for emoji in controls:
+        try:
+            await message.add_reaction(emoji)
+        except Exception:
+            pass
+
+    def check(reaction, user):
+        return (
+            user == ctx.author
+            and reaction.message.id == message.id
+            and str(reaction.emoji) in controls
+        )
+
+    while True:
+        try:
+            reaction, user = await bot.wait_for("reaction_add", timeout=75, check=check)
+        except asyncio.TimeoutError:
+            break
+
+        emoji = str(reaction.emoji)
+        if emoji == "⏹️":
+            break
+        if emoji == "➡️":
+            index = (index + 1) % len(pages)
+        elif emoji == "⬅️":
+            index = (index - 1) % len(pages)
+
+        try:
+            await message.edit(embed=pages[index])
+            await message.remove_reaction(reaction.emoji, user)
+        except Exception:
+            pass
 
 
 
@@ -383,6 +432,122 @@ def save_lottery(state):
     tmp_file.replace(LOTTERY_FILE)
 
 
+# -----------------------------
+# v2.1.0 Caps / Market / Bloodline Utilities
+# -----------------------------
+
+def get_level_cap_config():
+    return CONFIG.get("LEVEL_CAPS", {})
+
+
+def caps_enabled():
+    return bool(get_level_cap_config().get("enabled", True))
+
+
+def get_trait_cap(player, trait_name, trait_type):
+    cap_config = get_level_cap_config()
+    if player.get("devmode_enabled") and cap_config.get("devmode_ignores_caps", True):
+        return None
+
+    level = max(1, int(player.get("level", 1)))
+    if trait_type == "stat":
+        cap = int(cap_config.get("stat_base_cap", 250)) + (level * int(cap_config.get("stat_cap_per_level", 35)))
+        return min(cap, int(cap_config.get("absolute_stat_cap", 10000)))
+    cap = int(cap_config.get("skill_base_cap", 10000)) + (level * int(cap_config.get("skill_cap_per_level", 550)))
+    return min(cap, int(cap_config.get("absolute_skill_cap", 50000)))
+
+
+def apply_player_caps(player):
+    if not caps_enabled():
+        return player
+    for stat_name in list(player.get("stats", {}).keys()):
+        cap = get_trait_cap(player, stat_name, "stat")
+        if cap is not None:
+            player["stats"][stat_name] = min(int(player["stats"][stat_name]), cap)
+    for skill_name in list((player.get("affinities") or {}).keys()):
+        cap = get_trait_cap(player, skill_name, "skill")
+        if cap is not None:
+            player["affinities"][skill_name] = min(int(player["affinities"][skill_name]), cap)
+    return player
+
+
+def get_kekkei_jutsu_names(bloodline_name):
+    names = []
+    for name, data in JUTSU.items():
+        if not isinstance(data, dict):
+            continue
+        req = data.get("requirements", {})
+        if req.get("kekkei_genkai") == bloodline_name and req.get("unlockable", True) is not False:
+            names.append(name)
+    return names
+
+
+def grant_kekkei_jutsu(player, bloodline_name):
+    if not bloodline_name:
+        return []
+    player.setdefault("known_jutsu", [])
+    learned = []
+    for jutsu_name in get_kekkei_jutsu_names(bloodline_name):
+        if jutsu_name not in player["known_jutsu"]:
+            player["known_jutsu"].append(jutsu_name)
+            learned.append(jutsu_name)
+    return learned
+
+
+def sync_all_kekkei_jutsu(player):
+    learned = []
+    for bloodline in get_player_bloodlines(player):
+        learned.extend(grant_kekkei_jutsu(player, bloodline))
+    return learned
+
+
+def load_market():
+    if not MARKET_FILE.exists():
+        state = {"next_id": 1, "listings": {}, "history": []}
+        save_market(state)
+        return state
+    try:
+        with open(MARKET_FILE, "r", encoding="utf-8") as file:
+            state = json.load(file)
+    except json.JSONDecodeError:
+        backup_file = MARKET_FILE.with_suffix(f".broken-{int(datetime.now().timestamp())}.json")
+        MARKET_FILE.replace(backup_file)
+        state = {"next_id": 1, "listings": {}, "history": []}
+        save_market(state)
+        return state
+    state.setdefault("next_id", 1)
+    state.setdefault("listings", {})
+    state.setdefault("history", [])
+    return state
+
+
+def save_market(state):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_file = MARKET_FILE.with_suffix(".json.tmp")
+    with open(tmp_file, "w", encoding="utf-8") as file:
+        json.dump(state, file, indent=4)
+    tmp_file.replace(MARKET_FILE)
+
+
+def get_market_listing_id(state):
+    config = CONFIG.get("MARKET", {})
+    prefix = config.get("sale_id_prefix", "MKT")
+    sale_id = f"{prefix}-{int(state.get('next_id', 1)):05d}"
+    state["next_id"] = int(state.get("next_id", 1)) + 1
+    return sale_id
+
+
+def find_inventory_item(player, search_text):
+    cleaned = str(search_text or "").lower().strip()
+    for item_name in player.get("inventory", {}):
+        if item_name.lower() == cleaned:
+            return item_name
+    for item_name in player.get("inventory", {}):
+        if cleaned in item_name.lower():
+            return item_name
+    return None
+
+
 def get_lottery_total_tickets(state):
     return sum(int(amount or 0) for amount in state.get("tickets", {}).values())
 
@@ -550,6 +715,8 @@ def migrate_player(player):
     player.pop("dual_nature", None)
 
     if player.get("affinities"):
+        sync_all_kekkei_jutsu(player)
+        apply_player_caps(player)
         player["hidden_skill_score"] = calculate_hidden_skill_score(player)
 
     return player
@@ -625,6 +792,8 @@ def add_player_bloodline(player, bloodline_name, apply_modifiers=True):
         modifier = get_trait_modifier("kekkei_genkai", bloodline_name) if "get_trait_modifier" in globals() else {}
         apply_trait_delta(player.setdefault("stats", BASE_STATS.copy()), modifier.get("stats", {}))
         apply_trait_delta(player.setdefault("affinities", {}), modifier.get("skills", {}))
+    grant_kekkei_jutsu(player, bloodline_name)
+    apply_player_caps(player)
     player["hidden_skill_score"] = calculate_hidden_skill_score(player) if player.get("affinities") else 0
     return True
 
@@ -956,6 +1125,7 @@ async def start_tournament_duel(channel, user_id_a, user_id_b):
         },
         "guard": {user_id_a: False, user_id_b: False},
         "statuses": {user_id_a: {}, user_id_b: {}},
+        "jutsu_cooldowns": {user_id_a: {}, user_id_b: {}},
         "turn": first_turn,
         "round": 1,
         "started_at": now_utc().isoformat(),
@@ -1771,6 +1941,8 @@ def level_up_scaling(player):
             current.append(random.choice(available))
             player["chakra_natures"] = current
 
+    apply_player_caps(player)
+
 
 def add_xp(player, amount):
     player["xp"] += amount
@@ -1785,6 +1957,7 @@ def add_xp(player, amount):
         leveled_up = True
         levels_gained += 1
 
+    apply_player_caps(player)
     player["hidden_skill_score"] = calculate_hidden_skill_score(player)
 
     return leveled_up, levels_gained
@@ -2129,6 +2302,317 @@ async def resolve_beast_event(channel, event):
     player["hidden_skill_score"] = calculate_hidden_skill_score(player)
     save_players(players)
     await channel.send(embed=embed)
+
+
+# -----------------------------
+# v2.1.0 Turn-Based Tailed Beast Boss Fight
+# -----------------------------
+
+def get_beast_duel_key(channel_id, user_id):
+    return f"{channel_id}:{user_id}"
+
+
+def find_active_beast_duel_for_user(user_id, channel_id=None):
+    user_id = str(user_id)
+    for duel_key, duel in ACTIVE_BEAST_DUELS.items():
+        if duel.get("player_id") == user_id:
+            if channel_id is None or duel.get("channel_id") == channel_id:
+                return duel_key, duel
+    return None, None
+
+
+def build_beast_player(beast):
+    power = int(beast.get("power", 10000))
+    return {
+        "name": beast.get("name", "Tailed Beast"),
+        "level": max(5, int(beast.get("difficulty", 1)) * 10),
+        "stats": {
+            "Health": int(beast.get("hp", 500)),
+            "Durability": max(100, power // 80),
+            "Stamina": max(100, power // 90),
+            "Accuracy": max(100, power // 120),
+        },
+        "affinities": {
+            "Chakra Reserves": max(100, power // 3),
+            "Chakra Control": max(100, power // 5),
+            "Genjutsu": max(100, power // 8),
+            "Taijutsu": max(100, power // 4),
+            "Speed": max(100, power // 6),
+        },
+        "chakra_natures": ["Yang"],
+        "kekkei_genkai_list": [],
+        "clan": "Beast",
+        "has_rolled": True,
+    }
+
+
+def build_beast_duel_status_text(duel):
+    return "\n\n".join([
+        f"**{duel.get('player_mention')}**\n"
+        f"{resource_line('HP', duel['player_hp'], duel['player_max_hp'])}\n"
+        f"{resource_line('Chakra', duel['player_chakra'], duel['player_max_chakra'])}\n"
+        f"{resource_line('Stamina', duel['player_stamina'], duel['player_max_stamina'])}\n"
+        f"**Status:** {get_status_summary({'statuses': {duel['player_id']: duel.get('player_statuses', {})}, 'members': {duel['player_id']: {'mention': duel.get('player_mention')}}}, duel['player_id'])}",
+        f"**{duel['beast'].get('name')}**\n"
+        f"{resource_line('HP', duel['beast_hp'], duel['beast_max_hp'])}\n"
+        f"**Power:** {fmt_num(duel['beast'].get('power', 0))}"
+    ])
+
+
+async def start_beast_boss_duel(ctx, players, user_id, beast):
+    if not beast:
+        await send_notice(ctx, "Beast Missing", "The beast event could not start because no beast data was found.", "warning")
+        return
+
+    existing_key, existing = find_active_beast_duel_for_user(user_id, ctx.channel.id)
+    if existing:
+        await send_notice(ctx, "Boss Fight Active", "You are already fighting a tailed beast.", "warning")
+        return
+
+    player = players[user_id]
+    key = get_beast_duel_key(ctx.channel.id, user_id)
+    ACTIVE_BEAST_DUELS[key] = {
+        "channel_id": ctx.channel.id,
+        "player_id": user_id,
+        "player_mention": ctx.author.mention,
+        "beast": beast,
+        "beast_player": build_beast_player(beast),
+        "player_hp": calculate_scaled_resource(player, "hp"),
+        "player_max_hp": calculate_scaled_resource(player, "hp"),
+        "player_chakra": calculate_scaled_resource(player, "chakra"),
+        "player_max_chakra": calculate_scaled_resource(player, "chakra"),
+        "player_stamina": calculate_scaled_resource(player, "stamina"),
+        "player_max_stamina": calculate_scaled_resource(player, "stamina"),
+        "beast_hp": int(beast.get("hp", 500)),
+        "beast_max_hp": int(beast.get("hp", 500)),
+        "player_statuses": {},
+        "jutsu_cooldowns": {},
+        "round": 1,
+        "started_at": now_utc().isoformat(),
+    }
+
+    embed = build_event_embed(
+        "Tailed Beast Boss Fight Started",
+        f"{ctx.author.mention} challenged **{beast.get('name')}**. This is now a turn-based boss fight.",
+        "beast",
+        "danger",
+    )
+    add_field(embed, "Battlefield", build_beast_duel_status_text(ACTIVE_BEAST_DUELS[key]), False)
+    add_field(embed, "Moves", "`$attack` • `$heavy` • `$taijutsu` • `$defend` • `$genjutsu` • `$transformation` • `$jutsu [name]` • `$forfeit`", False)
+    await ctx.send(embed=embed)
+
+
+def beast_cost_check(duel, move_type):
+    stamina_cost = get_combat_cost(move_type, "stamina")
+    chakra_cost = get_combat_cost(move_type, "chakra")
+    if stamina_cost and duel["player_stamina"] < stamina_cost:
+        return False, f"You need **{stamina_cost} stamina**. Current stamina: **{duel['player_stamina']}**."
+    if chakra_cost and duel["player_chakra"] < chakra_cost:
+        return False, f"You need **{chakra_cost} chakra**. Current chakra: **{duel['player_chakra']}**."
+    return True, None
+
+
+def spend_beast_cost(duel, move_type, override_chakra=None):
+    stamina_cost = get_combat_cost(move_type, "stamina")
+    chakra_cost = get_combat_cost(move_type, "chakra") if override_chakra is None else int(override_chakra)
+    duel["player_stamina"] = max(0, duel["player_stamina"] - stamina_cost)
+    duel["player_chakra"] = max(0, duel["player_chakra"] - chakra_cost)
+    return stamina_cost, chakra_cost
+
+
+def tick_beast_jutsu_cooldowns(duel):
+    cds = duel.setdefault("jutsu_cooldowns", {})
+    for key in list(cds.keys()):
+        cds[key] = int(cds[key]) - 1
+        if cds[key] <= 0:
+            del cds[key]
+
+
+def get_beast_jutsu_cd_reason(duel, jutsu_name):
+    cds = duel.setdefault("jutsu_cooldowns", {})
+    if int(cds.get(jutsu_name, 0)) > 0:
+        return f"**{jutsu_name}** is on cooldown for **{cds[jutsu_name]}** more turn(s)."
+    if int(cds.get("__global__", 0)) > 0:
+        return f"Jutsu are on global cooldown for **{cds['__global__']}** more turn(s)."
+    return None
+
+
+def set_beast_jutsu_cd(duel, jutsu_name):
+    duel.setdefault("jutsu_cooldowns", {})["__global__"] = int(get_pvp_config().get("jutsu_global_cooldown_turns", 1))
+    duel.setdefault("jutsu_cooldowns", {})[jutsu_name] = int(get_pvp_config().get("jutsu_same_cooldown_turns", 3))
+
+
+async def finish_beast_boss_duel(ctx, duel_key, won):
+    duel = ACTIVE_BEAST_DUELS.get(duel_key)
+    if not duel:
+        return
+
+    players = migrate_all_players(load_players())
+    user_id = duel["player_id"]
+    beast = duel["beast"]
+
+    if won and user_id in players:
+        player = players[user_id]
+        leveled_up, levels_gained = add_xp(player, int(beast.get("xp_reward", 350)))
+        sealed_beast = assign_tailed_beast(player, beast)
+        econ = CONFIG.get("ECONOMY", {})
+        ryo_reward = random.randint(econ.get("beast_event_ryo_min", 200), econ.get("beast_event_ryo_max", 450))
+        player["ryo"] = int(player.get("ryo", 0)) + ryo_reward
+        add_item(player, "Tailed Beast Chakra Fragment")
+        player["hidden_skill_score"] = calculate_hidden_skill_score(player)
+        save_players(players)
+
+        expiry = datetime.fromisoformat(sealed_beast["expires_at"]).strftime("%Y-%m-%d %H:%M UTC")
+        embed = build_event_embed("Tailed Beast Captured", f"{duel.get('player_mention')} defeated and sealed **{beast.get('name')}**.", "beast", "success")
+        add_field(embed, "Temporary Boost", f"+**{sealed_beast['boost_percent']}%** to all traits until **{expiry}**", False)
+        reward_text = f"+**{fmt_num(beast.get('xp_reward', 350))} XP** | +**{fmt_num(ryo_reward)} Ryo** | **Tailed Beast Chakra Fragment**"
+        if leveled_up:
+            reward_text += f" | Level Up **+{levels_gained}**"
+        add_field(embed, "Rewards", reward_text, False)
+    else:
+        embed = build_event_embed("Tailed Beast Boss Fight Lost", f"{duel.get('player_mention')} was defeated by **{beast.get('name')}**. The beast returns to the event pool.", "beast", "danger")
+
+    del ACTIVE_BEAST_DUELS[duel_key]
+    await ctx.send(embed=embed)
+
+
+async def handle_beast_turn_action(ctx, action_type, jutsu_name=None):
+    duel_key, duel = find_active_beast_duel_for_user(ctx.author.id, ctx.channel.id)
+    if not duel:
+        return False
+
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    player = players.get(user_id)
+    if not player:
+        del ACTIVE_BEAST_DUELS[duel_key]
+        await send_notice(ctx, "Boss Fight Cancelled", "Your player profile was missing.", "danger")
+        return True
+
+    player_eff = get_effective_player(player)
+    beast_player = duel["beast_player"]
+    messages = []
+    tick_beast_jutsu_cooldowns(duel)
+
+    # simple resource regen every player turn
+    cfg = get_pvp_config()
+    duel["player_chakra"] = min(duel["player_max_chakra"], duel["player_chakra"] + int(cfg.get("chakra_regen_per_turn", 10)))
+    duel["player_stamina"] = min(duel["player_max_stamina"], duel["player_stamina"] + int(cfg.get("stamina_regen_per_turn", 10)))
+
+    damage = 0
+    move_label = action_type.title()
+    stamina_cost = chakra_cost = 0
+
+    if action_type == "defend":
+        ok, reason = beast_cost_check(duel, "defend")
+        if not ok:
+            await send_notice(ctx, "Not Enough Resources", reason, "warning")
+            return True
+        stamina_cost, chakra_cost = spend_beast_cost(duel, "defend")
+        duel["guard"] = True
+        messages.append(f"{ctx.author.mention} defended. {build_cost_text(stamina_cost, chakra_cost)}")
+
+    elif action_type == "jutsu":
+        matched_name = find_jutsu_name(jutsu_name or "")
+        if not matched_name:
+            await send_notice(ctx, "Jutsu Not Found", "That jutsu does not exist.", "warning")
+            return True
+        if matched_name not in player.get("known_jutsu", []):
+            await send_notice(ctx, "Jutsu Not Learned", "You do not know that jutsu yet.", "warning")
+            return True
+        cd_reason = get_beast_jutsu_cd_reason(duel, matched_name)
+        if cd_reason:
+            await send_notice(ctx, "Jutsu Cooldown", cd_reason, "warning")
+            return True
+        jutsu_data = JUTSU[matched_name]
+        cost = int(jutsu_data.get("chakra_cost", 0))
+        if duel["player_chakra"] < cost:
+            await send_notice(ctx, "Not Enough Chakra", f"**{matched_name}** needs **{cost} chakra**.", "warning")
+            return True
+        stamina_cost, chakra_cost = spend_beast_cost(duel, "jutsu", cost)
+        set_beast_jutsu_cd(duel, matched_name)
+        move_label = matched_name
+        hit_chance = calculate_pvp_hit_chance(player_eff, beast_player, "jutsu")
+        if random.random() <= hit_chance:
+            damage = calculate_pvp_jutsu_damage(player_eff, beast_player, jutsu_data)
+            duel["beast_hp"] = max(0, duel["beast_hp"] - damage)
+            messages.append(f"⚔️ {ctx.author.mention} used **{matched_name}** and dealt **{damage}** damage. {build_cost_text(stamina_cost, chakra_cost)}")
+        else:
+            messages.append(f"{ctx.author.mention} used **{matched_name}**, but missed. {build_cost_text(stamina_cost, chakra_cost)}")
+
+    elif action_type == "transformation":
+        ok, reason = beast_cost_check(duel, "transformation")
+        if not ok:
+            await send_notice(ctx, "Not Enough Resources", reason, "warning")
+            return True
+        stamina_cost, chakra_cost = spend_beast_cost(duel, "transformation")
+        chance = min(45, int(get_pvp_config().get("transformation_stun_chance", 65)) // 2)
+        if random.randint(1, 100) <= chance:
+            duel["beast_stunned"] = 1
+            messages.append(f"🪵 Transformation worked. **{duel['beast'].get('name')}** loses its next attack. {build_cost_text(stamina_cost, chakra_cost)}")
+        else:
+            messages.append(f"🪵 Transformation failed against the beast. {build_cost_text(stamina_cost, chakra_cost)}")
+
+    elif action_type == "genjutsu":
+        ok, reason = beast_cost_check(duel, "genjutsu")
+        if not ok:
+            await send_notice(ctx, "Not Enough Resources", reason, "warning")
+            return True
+        stamina_cost, chakra_cost = spend_beast_cost(duel, "genjutsu")
+        messages.append(f"🌀 Genjutsu barely affects a tailed beast, but lowers its next hit chance. {build_cost_text(stamina_cost, chakra_cost)}")
+        duel["beast_accuracy_penalty"] = 0.12
+
+    else:
+        move_type = "taijutsu_combo" if action_type == "taijutsu_combo" else action_type
+        ok, reason = beast_cost_check(duel, move_type)
+        if not ok:
+            await send_notice(ctx, "Not Enough Resources", reason, "warning")
+            return True
+        stamina_cost, chakra_cost = spend_beast_cost(duel, move_type)
+        hit_chance = calculate_pvp_hit_chance(player_eff, beast_player, move_type)
+        if random.random() <= hit_chance:
+            damage = calculate_basic_pvp_damage(player_eff, beast_player, move_type)
+            duel["beast_hp"] = max(0, duel["beast_hp"] - damage)
+            messages.append(f"⚔️ {ctx.author.mention} used **{move_label}** and dealt **{damage}** damage. {build_cost_text(stamina_cost, chakra_cost)}")
+        else:
+            messages.append(f"{ctx.author.mention} used **{move_label}**, but missed. {build_cost_text(stamina_cost, chakra_cost)}")
+
+    if duel["beast_hp"] <= 0:
+        embed = build_event_embed("Boss Fight Action", "\n".join(messages), "beast", "success")
+        add_field(embed, "Battlefield", build_beast_duel_status_text(duel), False)
+        await ctx.send(embed=embed)
+        await finish_beast_boss_duel(ctx, duel_key, True)
+        return True
+
+    # Beast response
+    if duel.get("beast_stunned", 0) > 0:
+        duel["beast_stunned"] = int(duel.get("beast_stunned", 0)) - 1
+        messages.append(f"🧱 **{duel['beast'].get('name')}** is stunned and misses its attack.")
+    else:
+        hit_chance = 0.68 - float(duel.pop("beast_accuracy_penalty", 0) or 0)
+        if random.random() <= hit_chance:
+            raw_damage = max(12, int(duel["beast"].get("power", 10000) / 650))
+            raw_damage += random.randint(6, 20)
+            if duel.get("guard"):
+                raw_damage = max(1, int(raw_damage * 0.45))
+                duel["guard"] = False
+                messages.append("🛡️ Your guard reduced the beast's damage.")
+            duel["player_hp"] = max(0, duel["player_hp"] - raw_damage)
+            messages.append(f"🐾 **{duel['beast'].get('name')}** retaliated for **{raw_damage}** damage.")
+        else:
+            messages.append(f"🐾 **{duel['beast'].get('name')}** missed its counterattack.")
+
+    duel["round"] = int(duel.get("round", 1)) + 1
+
+    embed = build_event_embed("Boss Fight Action", "\n".join(messages), "beast", "danger")
+    add_field(embed, "Battlefield", build_beast_duel_status_text(duel), False)
+    await ctx.send(embed=embed)
+
+    if duel["player_hp"] <= 0:
+        await finish_beast_boss_duel(ctx, duel_key, False)
+
+    return True
+
 
 def get_duel_key(channel_id, user_id_a, user_id_b):
     ids = sorted([str(user_id_a), str(user_id_b)])
@@ -2529,6 +3013,8 @@ def reset_player_for_reroll(player, ctx):
         "total_daily_claims": preserved_total_daily_claims,
         "total_weekly_claims": preserved_total_weekly_claims
     })
+    sync_all_kekkei_jutsu(player)
+    apply_player_caps(player)
     player["hidden_skill_score"] = calculate_hidden_skill_score(player)
     return player
 
@@ -2656,6 +3142,35 @@ def build_duel_status_text(duel):
         )
     return "\n\n".join(lines)
 
+def tick_jutsu_cooldowns(duel, user_id):
+    user_id = str(user_id)
+    cds = duel.setdefault("jutsu_cooldowns", {}).setdefault(user_id, {})
+    for key in list(cds.keys()):
+        cds[key] = int(cds[key]) - 1
+        if cds[key] <= 0:
+            del cds[key]
+
+
+def get_jutsu_cooldown_reason(duel, user_id, jutsu_name):
+    user_id = str(user_id)
+    cds = duel.setdefault("jutsu_cooldowns", {}).setdefault(user_id, {})
+    global_cd = int(cds.get("__global__", 0))
+    same_cd = int(cds.get(jutsu_name, 0))
+    if same_cd > 0:
+        return f"**{jutsu_name}** is on cooldown for **{same_cd}** more turn(s)."
+    if global_cd > 0:
+        return f"Jutsu are on global cooldown for **{global_cd}** more turn(s). Use attack, heavy, taijutsu, defend, genjutsu, or transformation."
+    return None
+
+
+def set_jutsu_cooldown(duel, user_id, jutsu_name):
+    user_id = str(user_id)
+    config = get_pvp_config()
+    cds = duel.setdefault("jutsu_cooldowns", {}).setdefault(user_id, {})
+    cds["__global__"] = int(config.get("jutsu_global_cooldown_turns", 1))
+    cds[jutsu_name] = int(config.get("jutsu_same_cooldown_turns", 3))
+
+
 def advance_duel_turn(duel):
     current = duel["turn"]
     opponent = get_duel_opponent_id(duel, current)
@@ -2747,6 +3262,7 @@ async def start_turn_based_duel(ctx, challenger, opponent):
         },
         "guard": {challenger_id: False, opponent_id: False},
         "statuses": {challenger_id: {}, opponent_id: {}},
+        "jutsu_cooldowns": {challenger_id: {}, opponent_id: {}},
         "turn": first_turn,
         "round": 1,
         "started_at": now_utc().isoformat(),
@@ -2758,6 +3274,9 @@ async def start_turn_based_duel(ctx, challenger, opponent):
     await ctx.send(embed=embed)
 
 async def handle_turn_action(ctx, action_type, jutsu_name=None):
+    if await handle_beast_turn_action(ctx, action_type, jutsu_name):
+        return
+
     duel_key, duel = find_active_duel_for_user(ctx.author.id, ctx.channel.id)
     if not duel:
         await send_notice(ctx, "No Active Duel", "You are not in an active duel in this channel.", "warning")
@@ -2784,6 +3303,7 @@ async def handle_turn_action(ctx, action_type, jutsu_name=None):
         return
 
     start_messages, stunned = apply_start_of_turn_effects(duel, actor_id)
+    tick_jutsu_cooldowns(duel, actor_id)
     if duel["hp"].get(actor_id, 0) <= 0:
         embed = ui_embed("Turn Effects", "\n".join(start_messages), "warning")
         await ctx.send(embed=embed)
@@ -2832,6 +3352,11 @@ async def handle_turn_action(ctx, action_type, jutsu_name=None):
             await send_notice(ctx, "Jutsu Not Learned", "You do not know that jutsu yet.", "warning")
             return
 
+        cooldown_reason = get_jutsu_cooldown_reason(duel, actor_id, matched_name)
+        if cooldown_reason:
+            await send_notice(ctx, "Jutsu Cooldown", cooldown_reason, "warning")
+            return
+
         jutsu_data = JUTSU[matched_name]
         cost = jutsu_data.get("chakra_cost", 0)
         if duel["chakra"].get(actor_id, 0) < cost:
@@ -2839,6 +3364,7 @@ async def handle_turn_action(ctx, action_type, jutsu_name=None):
             return
 
         duel["chakra"][actor_id] = max(0, duel["chakra"][actor_id] - cost)
+        set_jutsu_cooldown(duel, actor_id, matched_name)
         stamina_cost, chakra_cost = 0, cost
         hit_chance = calculate_pvp_hit_chance(actor_player, opponent_player, "jutsu", duel, actor_id)
         move_label = matched_name
@@ -2897,11 +3423,14 @@ async def handle_turn_action(ctx, action_type, jutsu_name=None):
         config = get_pvp_config()
         chance = config.get("transformation_stun_chance", 65) + actor_player.get("affinities", {}).get("Chakra Control", 0) // config.get("transformation_control_divisor", 500)
         chance = min(config.get("transformation_stun_cap", 90), chance)
+        success_turns = int(config.get("transformation_success_stun_turns", 2))
+        fail_turns = int(config.get("transformation_fail_self_stun_turns", 1))
         if not tsuchi_immune_to_status(opponent_player) and random.randint(1, 100) <= chance:
-            add_status_effect(duel, opponent_id, "stun", 1, 0)
-            messages.append(f"🪵 {ctx.author.mention} used **Transformation** and fooled {get_duel_member_text(duel, opponent_id)}. They are stunned for 1 turn. {build_cost_text(stamina_cost, chakra_cost)}")
+            add_status_effect(duel, opponent_id, "stun", success_turns, 0)
+            messages.append(f"🪵 {ctx.author.mention} used **Transformation** and fooled {get_duel_member_text(duel, opponent_id)}. They are stunned for **{success_turns} turns**. {build_cost_text(stamina_cost, chakra_cost)}")
         else:
-            messages.append(f"🪵 {ctx.author.mention} used **Transformation**, but {get_duel_member_text(duel, opponent_id)} saw through it. {build_cost_text(stamina_cost, chakra_cost)}")
+            add_status_effect(duel, actor_id, "stun", fail_turns, 0)
+            messages.append(f"🪵 {ctx.author.mention} used **Transformation**, but it failed. The backlash stuns **you** for **{fail_turns} turn**. {build_cost_text(stamina_cost, chakra_cost)}")
     elif action_type == "genjutsu":
         config = get_pvp_config()
         chance = config.get("genjutsu_apply_chance", 60) + actor_player.get("affinities", {}).get("Genjutsu", 0) // config.get("genjutsu_apply_divisor", 450)
@@ -3050,6 +3579,8 @@ async def roll(ctx):
     players[user_id]["kekkei_evolution"] = {kekkei_genkai: 0} if kekkei_genkai else {}
     players[user_id].setdefault("bloodline_fragments", {})
     players[user_id]["has_rolled"] = True
+    sync_all_kekkei_jutsu(players[user_id])
+    apply_player_caps(players[user_id])
     players[user_id]["hidden_skill_score"] = calculate_hidden_skill_score(players[user_id])
 
     save_players(players)
@@ -3137,6 +3668,10 @@ def build_player_profile_embed(member, player):
         f"{ICONS['rank']} **{player.get('rank', 'Academy Student')}**  •  {ICONS['level']} Level **{level}**",
         "success"
     )
+    try:
+        embed.set_thumbnail(url=member.display_avatar.url)
+    except Exception:
+        pass
 
     add_field(embed, "Progress", "\n".join([
         resource_line("XP", player.get("xp", 0), required_xp),
@@ -4093,6 +4628,182 @@ async def market_cancel(ctx, market_id: str = None):
     await send_notice(ctx, "Market Listing Cancelled", f"Returned **{listing['item']} x{listing['amount']}** to <@{return_id}>.", "neutral")
 
 
+
+@bot.command(name="market")
+async def market(ctx, action: str = None, *, args: str = None):
+    """Player market.
+    Usage:
+    $market
+    $market sell <item name> <price> [amount]
+    $market buy <MARKET_ID>
+    $market cancel <MARKET_ID>
+    """
+    if not CONFIG.get("MARKET", {}).get("enabled", True):
+        await send_notice(ctx, "Market Disabled", "The player market is currently disabled.", "warning")
+        return
+
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+
+    state = load_market()
+    action = (action or "list").lower().strip()
+
+    if action in ["list", "view", "show"]:
+        listings = state.get("listings", {})
+        embed = ui_embed("Shinobi Market", "Use `$market sell <item> <price> [amount]` or `$market buy <MARKET_ID>`.", "gold")
+        if not listings:
+            add_field(embed, "Active Listings", "No active listings yet.", False)
+        else:
+            lines = []
+            for sale_id, listing in list(listings.items())[:12]:
+                lines.append(
+                    f"`{sale_id}` • **{listing.get('item')} x{listing.get('amount', 1)}** "
+                    f"for **{fmt_num(listing.get('price', 0))} Ryo** • Seller <@{listing.get('seller_id')}>"
+                )
+            add_field(embed, "Active Listings", "\n".join(lines), False)
+        await ctx.send(embed=embed)
+        return
+
+    if action == "sell":
+        if not args:
+            await send_notice(ctx, "Market Sell Usage", "Use `$market sell <item name> <price> [amount]`.", "warning")
+            return
+
+        parts = args.rsplit(" ", 2)
+        amount = 1
+
+        # Accept both: item price  OR item price amount
+        try:
+            price = int(parts[-1])
+            item_query = args[: args.rfind(parts[-1])].strip()
+        except Exception:
+            if len(parts) < 2:
+                await send_notice(ctx, "Market Sell Usage", "Use `$market sell <item name> <price> [amount]`.", "warning")
+                return
+            try:
+                price = int(parts[-2])
+                amount = int(parts[-1])
+                item_query = parts[0].strip()
+            except Exception:
+                await send_notice(ctx, "Market Sell Usage", "Price and amount must be numbers.", "warning")
+                return
+
+        # If the last two tokens are numbers, treat final token as amount.
+        tokens = args.split()
+        if len(tokens) >= 3 and tokens[-1].isdigit() and tokens[-2].isdigit():
+            amount = int(tokens[-1])
+            price = int(tokens[-2])
+            item_query = " ".join(tokens[:-2]).strip()
+
+        amount = max(1, amount)
+        min_price = int(CONFIG.get("MARKET", {}).get("min_price", 1))
+        max_price = int(CONFIG.get("MARKET", {}).get("max_price", 10000000))
+        if price < min_price or price > max_price:
+            await send_notice(ctx, "Invalid Price", f"Price must be between **{fmt_num(min_price)}** and **{fmt_num(max_price)}** Ryo.", "warning")
+            return
+
+        player = players[user_id]
+        item_name = find_inventory_item(player, item_query)
+        if not item_name:
+            await send_notice(ctx, "Item Not Found", "You do not own that item.", "warning")
+            return
+        if int(player.get("inventory", {}).get(item_name, 0)) < amount:
+            await send_notice(ctx, "Not Enough Items", f"You do not have **{amount}x {item_name}**.", "warning")
+            return
+
+        remove_item(player, item_name, amount)
+        sale_id = get_market_listing_id(state)
+        state.setdefault("listings", {})[sale_id] = {
+            "seller_id": user_id,
+            "seller_name": ctx.author.name,
+            "item": item_name,
+            "amount": amount,
+            "price": price,
+            "created_at": now_utc().isoformat(),
+            "channel_id": ctx.channel.id,
+        }
+        save_players(players)
+        save_market(state)
+
+        embed = ui_embed("Market Listing Created", f"{ctx.author.mention} listed **{item_name} x{amount}**.", "gold")
+        add_field(embed, "Market ID", f"`{sale_id}`", True)
+        add_field(embed, "Price", f"**{fmt_num(price)} Ryo**", True)
+        add_field(embed, "Buy Command", f"`$market buy {sale_id}`", False)
+        await ctx.send(embed=embed)
+        return
+
+    if action == "buy":
+        sale_id = str(args or "").strip().upper()
+        listings = state.get("listings", {})
+        if sale_id not in listings:
+            await send_notice(ctx, "Listing Not Found", "That market listing does not exist or was already purchased.", "warning")
+            return
+
+        listing = listings[sale_id]
+        if str(listing.get("seller_id")) == user_id:
+            await send_notice(ctx, "Cannot Buy Own Listing", "You cannot buy your own market listing.", "warning")
+            return
+
+        buyer = players[user_id]
+        seller_id = str(listing.get("seller_id"))
+        if seller_id not in players:
+            await send_notice(ctx, "Seller Missing", "The seller profile no longer exists. A dev may need to clear this listing.", "warning")
+            return
+
+        price = int(listing.get("price", 0))
+        if int(buyer.get("ryo", 0)) < price:
+            await send_notice(ctx, "Not Enough Ryo", f"You need **{fmt_num(price)} Ryo** to buy this listing.", "warning")
+            return
+
+        seller = players[seller_id]
+        buyer["ryo"] = int(buyer.get("ryo", 0)) - price
+        seller["ryo"] = int(seller.get("ryo", 0)) + price
+        add_item(buyer, listing.get("item"), int(listing.get("amount", 1)))
+
+        del listings[sale_id]
+        state.setdefault("history", []).append({
+            "id": sale_id,
+            "buyer_id": user_id,
+            "seller_id": seller_id,
+            "item": listing.get("item"),
+            "amount": int(listing.get("amount", 1)),
+            "price": price,
+            "sold_at": now_utc().isoformat(),
+        })
+        save_players(players)
+        save_market(state)
+
+        embed = ui_embed("Market Purchase Complete", f"{ctx.author.mention} bought **{listing.get('item')} x{listing.get('amount', 1)}**.", "success")
+        add_field(embed, "Price", f"**{fmt_num(price)} Ryo**", True)
+        add_field(embed, "Seller", f"<@{seller_id}>", True)
+        await ctx.send(embed=embed)
+        return
+
+    if action == "cancel":
+        sale_id = str(args or "").strip().upper()
+        listings = state.get("listings", {})
+        if sale_id not in listings:
+            await send_notice(ctx, "Listing Not Found", "That listing does not exist.", "warning")
+            return
+        listing = listings[sale_id]
+        if str(listing.get("seller_id")) != user_id and ctx.author.id not in DEV_USER_IDS:
+            await send_notice(ctx, "Cannot Cancel", "Only the seller or a developer can cancel this listing.", "danger")
+            return
+        seller_id = str(listing.get("seller_id"))
+        if seller_id in players:
+            add_item(players[seller_id], listing.get("item"), int(listing.get("amount", 1)))
+        del listings[sale_id]
+        save_players(players)
+        save_market(state)
+        await send_notice(ctx, "Listing Cancelled", f"`{sale_id}` was cancelled and the item was returned.", "success")
+        return
+
+    await send_notice(ctx, "Market Usage", "`$market`, `$market sell <item> <price> [amount]`, `$market buy <MARKET_ID>`, `$market cancel <MARKET_ID>`", "info")
+
+
 @bot.command(name="inventory")
 async def inventory(ctx):
     players = migrate_all_players(load_players())
@@ -4233,19 +4944,10 @@ async def use_item(ctx, *, item_name: str):
         return
 
     player = players[user_id]
-    matched_item = None
+    matched_item = find_inventory_item(player, item_name)
 
-    for item in ITEMS:
-        if item.lower() == item_name.lower():
-            matched_item = item
-            break
-
-    if not matched_item:
-        await send_notice(ctx, "Item Not Found", "That item does not exist.", "warning")
-        return
-
-    if matched_item not in player.get("inventory", {}):
-        await send_notice(ctx, "Missing Item", "You do not have that item in your inventory.", "warning")
+    if not matched_item or matched_item not in ITEMS:
+        await send_notice(ctx, "Item Not Found", "You either do not own that item, or it is not configured.", "warning")
         return
 
     item_data = ITEMS[matched_item]
@@ -4256,15 +4958,39 @@ async def use_item(ctx, *, item_name: str):
     if effect == "Rerolls":
         player["rerolls_remaining"] = int(player.get("rerolls_remaining", REROLLS_PER_PLAYER)) + boost
         effect_text = f"+{fmt_num(boost)} rerolls"
+
+    elif effect == "Bloodline Fragment":
+        bloodlines = get_player_bloodlines(player)
+        if not bloodlines:
+            await send_notice(ctx, "No Bloodline", "You need a Kekkei Genkai before this item can create a fragment.", "warning")
+            return
+        chosen = bloodlines[0]
+        player.setdefault("bloodline_fragments", {})[chosen] = int(player.setdefault("bloodline_fragments", {}).get(chosen, 0)) + max(1, boost)
+        effect_text = f"+{max(1, boost)} **{chosen}** fragment"
+
+    elif effect == "Learn Kekkei Jutsu":
+        learned = sync_all_kekkei_jutsu(player)
+        if not learned:
+            await send_notice(ctx, "No New Jutsu", "You already know your available Kekkei Genkai jutsu, or you do not own a bloodline with configured jutsu.", "warning")
+            return
+        effect_text = "Learned: " + compact_list(learned, "None", 6)
+
     elif effect in player.get("stats", {}):
         player["stats"][effect] += boost
+
     elif player.get("affinities") and effect in player["affinities"]:
         player["affinities"][effect] += boost
+
+    elif effect == "Market Fee Waiver":
+        player["market_fee_waivers"] = int(player.get("market_fee_waivers", 0)) + max(1, boost)
+        effect_text = f"+{max(1, boost)} market fee waiver"
+
     else:
         await send_notice(ctx, "Item Effect Not Supported", f"**{matched_item}** uses effect `{effect}`, but that effect is not supported yet.", "warning")
         return
 
     remove_item(player, matched_item)
+    apply_player_caps(player)
     player["hidden_skill_score"] = calculate_hidden_skill_score(player)
 
     save_players(players)
@@ -4376,6 +5102,12 @@ async def pvp_defend(ctx):
 
 @bot.command(name="forfeit")
 async def pvp_forfeit(ctx):
+    beast_key, beast_duel = find_active_beast_duel_for_user(ctx.author.id, ctx.channel.id)
+    if beast_duel:
+        await send_notice(ctx, "Boss Fight Forfeit", f"{ctx.author.mention} fled from **{beast_duel['beast'].get('name')}**.", "danger")
+        await finish_beast_boss_duel(ctx, beast_key, False)
+        return
+
     duel_key, duel = find_active_duel_for_user(ctx.author.id, ctx.channel.id)
     if not duel:
         await send_notice(ctx, "No Active Duel", "You are not in an active duel in this channel.", "warning")
@@ -4463,7 +5195,6 @@ async def devevent(ctx, event_type: str, value: int, time_sec: int):
 
 
 @bot.command(name="event")
-
 async def event(ctx):
     global ACTIVE_EVENT
 
@@ -4486,8 +5217,14 @@ async def event(ctx):
         await send_notice(ctx, "Already Joined", "You already joined this event.", "warning")
         return
 
-    if ACTIVE_EVENT["type"] == "beast" and len(ACTIVE_EVENT["accepted"]) >= 1:
-        await send_notice(ctx, "Capture Locked", "This Tailed-Beast Capture already has a challenger.", "warning")
+    if ACTIVE_EVENT["type"] == "beast":
+        if len(ACTIVE_EVENT["accepted"]) >= 1:
+            await send_notice(ctx, "Capture Locked", "This Tailed-Beast Capture already has a challenger.", "warning")
+            return
+        ACTIVE_EVENT["accepted"].append(user_id)
+        beast = ACTIVE_EVENT.get("enemy")
+        ACTIVE_EVENT = None
+        await start_beast_boss_duel(ctx, players, user_id, beast)
         return
 
     ACTIVE_EVENT["accepted"].append(user_id)
@@ -4497,9 +5234,6 @@ async def event(ctx):
     elif ACTIVE_EVENT["type"] == "shinobi":
         embed = build_event_embed("Group Fight Joined", f"{ctx.author.mention} joined the Shinobi Group Fight.", "shinobi", "success")
         add_field(embed, "Current Fighters", str(len(ACTIVE_EVENT["accepted"])), True)
-    elif ACTIVE_EVENT["type"] == "beast":
-        embed = build_event_embed("Capture Challenger Selected", f"{ctx.author.mention} is attempting the Tailed-Beast Capture.", "beast", "danger")
-        add_field(embed, "Rule", "Only the first valid challenger can attempt this beast.", False)
     else:
         embed = build_event_embed("Event Joined", f"{ctx.author.mention} joined the event.", "event", "success")
     await ctx.send(embed=embed)
@@ -4516,9 +5250,9 @@ async def jutsu_list(ctx, *, jutsu_name: str = None):
         await send_notice(ctx, "No Jutsu Configured", "No jutsu are configured yet.", "warning")
         return
 
-    page = 1
+    start_page = 1
     if jutsu_name and jutsu_name.strip().isdigit():
-        page = max(1, int(jutsu_name.strip()))
+        start_page = max(1, int(jutsu_name.strip()))
 
     visible_jutsu = []
     for name, data in JUTSU.items():
@@ -4531,49 +5265,54 @@ async def jutsu_list(ctx, *, jutsu_name: str = None):
 
     visible_jutsu.sort(key=lambda item: (
         item[1].get("requirements", {}).get("level", 1),
+        item[1].get("requirements", {}).get("kekkei_genkai", ""),
         item[1].get("requirements", {}).get("chakra_nature", ""),
         item[0]
     ))
 
     per_page = 4
     total_pages = max(1, (len(visible_jutsu) + per_page - 1) // per_page)
-    page = min(page, total_pages)
-    page_items = visible_jutsu[(page - 1) * per_page:page * per_page]
+    start_page = min(start_page, total_pages)
+    pages = []
 
-    embed = ui_embed(
-        f"Jutsu Library — Page {page}/{total_pages}",
-        "Use `$learnjutsu [name]` to learn. In combat, use `$jutsu [name]`.",
-        "brand"
-    )
-
-    for name, data in page_items:
-        requirements = data.get("requirements", {})
-        req_text = ", ".join(f"{key}: {value}" for key, value in requirements.items()) or "None"
-        status = data.get("status_effect")
-        if isinstance(status, dict):
-            status_text = f"{status.get('type', 'Unknown').title()} • {status.get('chance', 0)}% • {status.get('turns', 1)} turn(s)"
-            if status.get("damage", 0):
-                status_text += f" • {status.get('damage')} per turn"
-            if status.get("miss_penalty", 0):
-                status_text += f" • +{int(status.get('miss_penalty', 0) * 100)}% miss penalty"
-        else:
-            status_text = "None"
-
-        add_field(
-            embed,
-            f"{name}",
-            "\n".join([
-                f"**Type:** {data.get('type', 'Unknown')}  •  **Cost:** {data.get('chakra_cost', 0)} chakra",
-                f"**Power:** {data.get('base_power', 0)}  •  **Scaling:** {data.get('scaling') or 'None'}",
-                f"**Status:** {status_text}",
-                f"**Requires:** {req_text}",
-                truncate_text(data.get('description', ''), 220),
-            ]),
-            False
+    for page in range(1, total_pages + 1):
+        page_items = visible_jutsu[(page - 1) * per_page:page * per_page]
+        embed = ui_embed(
+            f"Jutsu Library — Page {page}/{total_pages}",
+            "Use `$learnjutsu [name]` to learn. In combat, use `$jutsu [name]`. React with ⬅️ ➡️ to move pages.",
+            "brand"
         )
 
-    embed.set_footer(text=f"Showing {len(page_items)} of {len(visible_jutsu)} jutsu • Next: $jutsus {min(page + 1, total_pages)}")
-    await ctx.send(embed=embed)
+        for name, data in page_items:
+            requirements = data.get("requirements", {})
+            req_text = ", ".join(f"{key}: {value}" for key, value in requirements.items()) or "None"
+            status = data.get("status_effect")
+            if isinstance(status, dict):
+                status_text = f"{status.get('type', 'Unknown').title()} • {status.get('chance', 0)}% • {status.get('turns', 1)} turn(s)"
+                if status.get("damage", 0):
+                    status_text += f" • {status.get('damage')} per turn"
+                if status.get("miss_penalty", 0):
+                    status_text += f" • +{int(status.get('miss_penalty', 0) * 100)}% miss penalty"
+            else:
+                status_text = "None"
+
+            add_field(
+                embed,
+                f"{name}",
+                "\n".join([
+                    f"**Type:** {data.get('type', 'Unknown')}  •  **Cost:** {data.get('chakra_cost', 0)} chakra",
+                    f"**Power:** {data.get('base_power', 0)}  •  **Scaling:** {data.get('scaling') or 'None'}",
+                    f"**Status:** {status_text}",
+                    f"**Requires:** {req_text}",
+                    truncate_text(data.get('description', ''), 220),
+                ]),
+                False
+            )
+
+        embed.set_footer(text=f"Showing {len(page_items)} of {len(visible_jutsu)} jutsu • ⬅️ ➡️ to scroll • Laentaru Bot v{BOT_VERSION}")
+        pages.append(embed)
+
+    await send_paginated_embeds(ctx, pages, start_page - 1)
 
 
 @bot.command(name="learnjutsu")
@@ -5090,6 +5829,8 @@ def player_has_item_amount(player, item_name, amount):
 def apply_stage_rewards(player, stage):
     apply_trait_delta(player.setdefault("stats", BASE_STATS.copy()), stage.get("stats", {}))
     apply_trait_delta(player.setdefault("affinities", {}), stage.get("skills", {}))
+    sync_all_kekkei_jutsu(player)
+    apply_player_caps(player)
     player["hidden_skill_score"] = calculate_hidden_skill_score(player)
 
 
