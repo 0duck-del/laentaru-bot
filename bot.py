@@ -1126,6 +1126,7 @@ async def start_tournament_duel(channel, user_id_a, user_id_b):
         "guard": {user_id_a: False, user_id_b: False},
         "statuses": {user_id_a: {}, user_id_b: {}},
         "jutsu_cooldowns": {user_id_a: {}, user_id_b: {}},
+        "transformation_failures": {user_id_a: 0, user_id_b: 0},
         "turn": first_turn,
         "round": 1,
         "started_at": now_utc().isoformat(),
@@ -3263,6 +3264,7 @@ async def start_turn_based_duel(ctx, challenger, opponent):
         "guard": {challenger_id: False, opponent_id: False},
         "statuses": {challenger_id: {}, opponent_id: {}},
         "jutsu_cooldowns": {challenger_id: {}, opponent_id: {}},
+        "transformation_failures": {challenger_id: 0, opponent_id: 0},
         "turn": first_turn,
         "round": 1,
         "started_at": now_utc().isoformat(),
@@ -3424,13 +3426,24 @@ async def handle_turn_action(ctx, action_type, jutsu_name=None):
         chance = config.get("transformation_stun_chance", 65) + actor_player.get("affinities", {}).get("Chakra Control", 0) // config.get("transformation_control_divisor", 500)
         chance = min(config.get("transformation_stun_cap", 90), chance)
         success_turns = int(config.get("transformation_success_stun_turns", 2))
-        fail_turns = int(config.get("transformation_fail_self_stun_turns", 1))
+
+        # Backfire scaling is based on FAILED transformations only.
+        # Example: success first, fail second = 2-turn self stun.
+        # Fail first = 2 turns, fail second = 4 turns, fail third = 8 turns.
+        base_fail_turns = int(config.get("transformation_fail_self_stun_turns", 2))
+        max_fail_turns = int(config.get("transformation_fail_self_stun_max_turns", 8))
+        failure_counts = duel.setdefault("transformation_failures", {})
+        previous_failures = int(failure_counts.get(actor_id, 0))
+        fail_turns = min(max_fail_turns, base_fail_turns * (2 ** previous_failures))
+
         if not tsuchi_immune_to_status(opponent_player) and random.randint(1, 100) <= chance:
             add_status_effect(duel, opponent_id, "stun", success_turns, 0)
             messages.append(f"🪵 {ctx.author.mention} used **Transformation** and fooled {get_duel_member_text(duel, opponent_id)}. They are stunned for **{success_turns} turns**. {build_cost_text(stamina_cost, chakra_cost)}")
         else:
+            failure_counts[actor_id] = previous_failures + 1
             add_status_effect(duel, actor_id, "stun", fail_turns, 0)
-            messages.append(f"🪵 {ctx.author.mention} used **Transformation**, but it failed. The backlash stuns **you** for **{fail_turns} turn**. {build_cost_text(stamina_cost, chakra_cost)}")
+            turn_word = "turn" if fail_turns == 1 else "turns"
+            messages.append(f"🪵 {ctx.author.mention} used **Transformation**, but it backfired. The backlash stuns **you** for **{fail_turns} {turn_word}**. {build_cost_text(stamina_cost, chakra_cost)}")
     elif action_type == "genjutsu":
         config = get_pvp_config()
         chance = config.get("genjutsu_apply_chance", 60) + actor_player.get("affinities", {}).get("Genjutsu", 0) // config.get("genjutsu_apply_divisor", 450)
