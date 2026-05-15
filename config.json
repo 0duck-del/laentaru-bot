@@ -1,5 +1,5 @@
 {
-    "TRAINING_COOLDOWN_MINUTES": 10,
+    "TRAINING_COOLDOWN_MINUTES": 3,
     "DUEL_DURATION_SECONDS": 30,
     "DUEL_ROUND_DELAY_SECONDS": 1.5,
     "BASE_STATS": {
@@ -621,6 +621,78 @@
             "rarity": "Mythic",
             "effect": "Accuracy",
             "boost": 200
+        },
+        "Medical Kit": {
+            "rarity": "Uncommon",
+            "effect": "Health",
+            "boost": 35,
+            "description": "A field kit that permanently improves Health."
+        },
+        "Chakra Battery": {
+            "rarity": "Rare",
+            "effect": "Chakra Reserves",
+            "boost": 75,
+            "description": "Condensed chakra used to strengthen reserves."
+        },
+        "Stamina Seal": {
+            "rarity": "Rare",
+            "effect": "Stamina",
+            "boost": 65,
+            "description": "A seal that improves long-fight endurance."
+        },
+        "Armor Plating": {
+            "rarity": "Rare",
+            "effect": "Durability",
+            "boost": 70,
+            "description": "Protective plating that improves survivability."
+        },
+        "Precision Senbon": {
+            "rarity": "Rare",
+            "effect": "Accuracy",
+            "boost": 55,
+            "description": "A precision weapon set that improves accuracy."
+        },
+        "Genjutsu Bell": {
+            "rarity": "Epic",
+            "effect": "Genjutsu",
+            "boost": 140,
+            "description": "A bell used to sharpen illusion control."
+        },
+        "Taijutsu Manual": {
+            "rarity": "Epic",
+            "effect": "Taijutsu",
+            "boost": 140,
+            "description": "A combat manual that improves close-range fighting."
+        },
+        "Chakra Control Seal": {
+            "rarity": "Epic",
+            "effect": "Chakra Control",
+            "boost": 140,
+            "description": "A seal that improves chakra control."
+        },
+        "Speed Anklets": {
+            "rarity": "Epic",
+            "effect": "Speed",
+            "boost": 140,
+            "description": "Weighted anklets that improve speed once mastered."
+        },
+        "Bloodline Primer": {
+            "rarity": "Legendary",
+            "effect": "Bloodline Fragment",
+            "boost": 1,
+            "description": "Turns into a fragment for one of your owned Kekkei Genkai."
+        },
+        "Jutsu Archive Scroll": {
+            "rarity": "Legendary",
+            "effect": "Learn Kekkei Jutsu",
+            "boost": 1,
+            "description": "Teaches one available Kekkei Genkai jutsu you qualify for."
+        },
+        "Market Permit": {
+            "rarity": "Common",
+            "effect": "Market Fee Waiver",
+            "boost": 1,
+            "description": "Future-ready utility item for market fee systems."
         }
     },
     "ITEM_DROP_TABLE": [
@@ -630,7 +702,8 @@
                 "Kunai",
                 "Shuriken",
                 "Soldier Pill",
-                "Bandage Wrap"
+                "Bandage Wrap",
+                "Medical Kit"
             ]
         },
         {
@@ -639,7 +712,8 @@
                 "Smoke Bomb",
                 "Basic Chakra Pill",
                 "Focus Tag",
-                "Chakra Ink"
+                "Chakra Ink",
+                "Medical Kit"
             ]
         },
         {
@@ -648,7 +722,11 @@
                 "Training Weights",
                 "Scroll Fragment",
                 "Weighted Gi",
-                "Mirror Lens"
+                "Mirror Lens",
+                "Chakra Battery",
+                "Stamina Seal",
+                "Armor Plating",
+                "Precision Senbon"
             ]
         },
         {
@@ -658,7 +736,13 @@
                 "Sealing Chain Fragment",
                 "Nature Catalyst",
                 "Dojutsu Lens",
-                "Bloodline Catalyst"
+                "Bloodline Catalyst",
+                "Genjutsu Bell",
+                "Taijutsu Manual",
+                "Chakra Control Seal",
+                "Speed Anklets",
+                "Bloodline Primer",
+                "Jutsu Archive Scroll"
             ]
         },
         {
@@ -1459,10 +1543,392 @@
                 "turns": 3,
                 "damage": 8
             }
+        },
+        "Sharingan Genjutsu": {
+            "type": "Kekkei Genkai",
+            "description": "A Sharingan illusion that damages focus and can confuse the opponent.",
+            "chakra_cost": 95,
+            "base_power": 95,
+            "scaling": "Genjutsu",
+            "scaling_divisor": 120,
+            "requirements": {
+                "level": 5,
+                "kekkei_genkai": "Sharingan"
+            },
+            "status_effect": {
+                "type": "confused",
+                "chance": 45,
+                "turns": 2,
+                "damage": 0,
+                "miss_penalty": 0.16
+            }
+        },
+        "Byakugan Palm Barrage": {
+            "type": "Kekkei Genkai",
+            "description": "A Byakugan taijutsu barrage that pressures chakra points.",
+            "chakra_cost": 90,
+            "base_power": 105,
+            "scaling": "Taijutsu",
+            "scaling_divisor": 125,
+            "requirements": {
+                "level": 5,
+                "kekkei_genkai": "Byakugan"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 18,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Ketsuryugan Blood Gaze": {
+            "type": "Kekkei Genkai",
+            "description": "A bloodline genjutsu that punishes low focus.",
+            "chakra_cost": 120,
+            "base_power": 130,
+            "scaling": "Genjutsu",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 10,
+                "kekkei_genkai": "Ketsuryugan"
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 35,
+                "turns": 3,
+                "damage": 8
+            }
+        },
+        "Wood Binding Roots": {
+            "type": "Kekkei Genkai",
+            "description": "Wood Release roots bind and crush the target.",
+            "chakra_cost": 115,
+            "base_power": 135,
+            "scaling": "Chakra Reserves",
+            "scaling_divisor": 115,
+            "requirements": {
+                "level": 8,
+                "kekkei_genkai": "Wood Release"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 25,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Ice Mirror Pierce": {
+            "type": "Kekkei Genkai",
+            "description": "Ice mirrors create high-speed piercing attacks.",
+            "chakra_cost": 105,
+            "base_power": 125,
+            "scaling": "Speed",
+            "scaling_divisor": 110,
+            "requirements": {
+                "level": 8,
+                "kekkei_genkai": "Ice Release"
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 30,
+                "turns": 3,
+                "damage": 7
+            }
+        },
+        "Lava Armor Break": {
+            "type": "Kekkei Genkai",
+            "description": "Lava Release burns through defense with molten chakra.",
+            "chakra_cost": 125,
+            "base_power": 145,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 110,
+            "requirements": {
+                "level": 10,
+                "kekkei_genkai": "Lava Release"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 42,
+                "turns": 3,
+                "damage": 9
+            }
+        },
+        "Bone Drill Assault": {
+            "type": "Kekkei Genkai",
+            "description": "Shikotsumyaku turns bone into a brutal close-range weapon.",
+            "chakra_cost": 110,
+            "base_power": 135,
+            "scaling": "Taijutsu",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 8,
+                "kekkei_genkai": "Shikotsumyaku"
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 40,
+                "turns": 3,
+                "damage": 8
+            }
+        },
+        "Boil Release Acid Mist": {
+            "type": "Kekkei Genkai",
+            "description": "Boil Release creates corrosive mist that burns over time.",
+            "chakra_cost": 115,
+            "base_power": 122,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 115,
+            "requirements": {
+                "level": 8,
+                "kekkei_genkai": "Boil Release"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 45,
+                "turns": 3,
+                "damage": 8
+            }
+        },
+        "Storm Laser Circus": {
+            "type": "Kekkei Genkai",
+            "description": "Storm Release fires guided beams with strong accuracy pressure.",
+            "chakra_cost": 125,
+            "base_power": 140,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 110,
+            "requirements": {
+                "level": 10,
+                "kekkei_genkai": "Storm Release"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 22,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Magnet Sand Coffin": {
+            "type": "Kekkei Genkai",
+            "description": "Magnet Release crushes the opponent with controlled metal sand.",
+            "chakra_cost": 120,
+            "base_power": 130,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 115,
+            "requirements": {
+                "level": 9,
+                "kekkei_genkai": "Magnet Release"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 20,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Explosion Palm": {
+            "type": "Kekkei Genkai",
+            "description": "Explosion Release adds violent chakra bursts to melee strikes.",
+            "chakra_cost": 120,
+            "base_power": 145,
+            "scaling": "Taijutsu",
+            "scaling_divisor": 110,
+            "requirements": {
+                "level": 10,
+                "kekkei_genkai": "Explosion Release"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 25,
+                "turns": 2,
+                "damage": 10
+            }
+        },
+        "Scorch Halo": {
+            "type": "Kekkei Genkai",
+            "description": "Scorch Release drains the enemy with intense heat.",
+            "chakra_cost": 120,
+            "base_power": 138,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 10,
+                "kekkei_genkai": "Scorch Release"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 45,
+                "turns": 3,
+                "damage": 10
+            }
+        },
+        "Crystal Prison": {
+            "type": "Kekkei Genkai",
+            "description": "Crystal Release traps the enemy in jagged crystal.",
+            "chakra_cost": 120,
+            "base_power": 130,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 115,
+            "requirements": {
+                "level": 9,
+                "kekkei_genkai": "Crystal Release"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 22,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Steel Body Crash": {
+            "type": "Kekkei Genkai",
+            "description": "Steel Release hardens the body for a devastating strike.",
+            "chakra_cost": 105,
+            "base_power": 128,
+            "scaling": "Durability",
+            "scaling_divisor": 110,
+            "requirements": {
+                "level": 8,
+                "kekkei_genkai": "Steel Release"
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 22,
+                "turns": 2,
+                "damage": 6
+            }
+        },
+        "Swift Step Fang": {
+            "type": "Kekkei Genkai",
+            "description": "Swift Release overwhelms the opponent before they can react.",
+            "chakra_cost": 110,
+            "base_power": 132,
+            "scaling": "Speed",
+            "scaling_divisor": 100,
+            "requirements": {
+                "level": 8,
+                "kekkei_genkai": "Swift Release"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 20,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Dark Chakra Absorption": {
+            "type": "Kekkei Genkai",
+            "description": "Dark Release consumes chakra and turns it into punishment.",
+            "chakra_cost": 130,
+            "base_power": 142,
+            "scaling": "Chakra Reserves",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 12,
+                "kekkei_genkai": "Dark Release"
+            },
+            "status_effect": {
+                "type": "confused",
+                "chance": 35,
+                "turns": 2,
+                "damage": 0,
+                "miss_penalty": 0.14
+            }
+        },
+        "Dust Particle Dismantle": {
+            "type": "Kekkei Genkai",
+            "description": "Dust Release hits hard but costs heavy chakra.",
+            "chakra_cost": 180,
+            "base_power": 190,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 95,
+            "requirements": {
+                "level": 20,
+                "kekkei_genkai": "Dust Release"
+            },
+            "status_effect": {
+                "type": "annihilation",
+                "chance": 20,
+                "turns": 2,
+                "damage": 18
+            }
+        },
+        "Sage Rampage": {
+            "type": "Kekkei Genkai",
+            "description": "Sage Transformation boosts brutal physical offense.",
+            "chakra_cost": 115,
+            "base_power": 140,
+            "scaling": "Taijutsu",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 10,
+                "kekkei_genkai": "Sage Transformation"
+            },
+            "status_effect": {
+                "type": "regen",
+                "chance": 60,
+                "turns": 2,
+                "damage": 8
+            }
+        },
+        "Kurama Phantom Break": {
+            "type": "Kekkei Genkai",
+            "description": "Kurama Genjutsu twists perception and punishes missed focus.",
+            "chakra_cost": 125,
+            "base_power": 135,
+            "scaling": "Genjutsu",
+            "scaling_divisor": 100,
+            "requirements": {
+                "level": 10,
+                "kekkei_genkai": "Kurama Genjutsu"
+            },
+            "status_effect": {
+                "type": "confused",
+                "chance": 50,
+                "turns": 3,
+                "damage": 0,
+                "miss_penalty": 0.2
+            }
+        },
+        "Adamantine Chain Seal": {
+            "type": "Kekkei Genkai",
+            "description": "Adamantine chains bind the target and damage their rhythm.",
+            "chakra_cost": 125,
+            "base_power": 135,
+            "scaling": "Chakra Reserves",
+            "scaling_divisor": 110,
+            "requirements": {
+                "level": 10,
+                "kekkei_genkai": "Adamantine Chains"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 28,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Smoke Veil Ambush": {
+            "type": "Kekkei Genkai",
+            "description": "Smoke Transformation hides the user before a quick ambush.",
+            "chakra_cost": 105,
+            "base_power": 125,
+            "scaling": "Speed",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 8,
+                "kekkei_genkai": "Smoke Transformation"
+            },
+            "status_effect": {
+                "type": "confused",
+                "chance": 35,
+                "turns": 2,
+                "damage": 0,
+                "miss_penalty": 0.12
+            }
         }
     },
-    "BOT_VERSION": "1.9.2-market-hotfix",
-    "REROLLS_PER_PLAYER": 3,
+    "BOT_VERSION": "2.1.0",
+    "REROLLS_PER_PLAYER": 10,
     "TOURNAMENT": {
         "min_win_chance": 0.18,
         "max_win_chance": 0.82,
@@ -1536,9 +2002,9 @@
         "weekly_streak_bonus_ryo": 100,
         "weekly_streak_bonus_xp": 125,
         "weekly_streak_cap": 8,
-        "daily_cooldown_hours": 20,
+        "daily_cooldown_hours": 15,
         "daily_reset_grace_hours": 48,
-        "weekly_cooldown_hours": 156,
+        "weekly_cooldown_hours": 120,
         "weekly_reset_grace_hours": 240,
         "rare_item_daily_chance": 8,
         "rare_item_weekly_chance": 35,
@@ -1734,7 +2200,7 @@
         "genjutsu_penalty_divisor": 100000,
         "genjutsu_penalty_cap": 0.12,
         "genjutsu_turns": 2,
-        "chakra_regen_per_turn": 8,
+        "chakra_regen_per_turn": 10,
         "stamina_regen_per_turn": 10,
         "global_damage_scale": 100,
         "max_damage_percent_attack": 0.18,
@@ -1782,7 +2248,11 @@
             "Kekkei Genkai": 600,
             "Extra Nature": 125
         },
-        "accuracy_stat_weight": 0.45
+        "accuracy_stat_weight": 0.45,
+        "jutsu_global_cooldown_turns": 1,
+        "jutsu_same_cooldown_turns": 3,
+        "transformation_success_stun_turns": 2,
+        "transformation_fail_self_stun_turns": 1
     },
     "UI": {
         "embed_color_primary": "orange",
@@ -2020,7 +2490,7 @@
                     "Chakra Control": 350
                 },
                 "power": 1000,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Ice Release": {
                 "stats": {
@@ -2031,7 +2501,7 @@
                     "Chakra Control": 450
                 },
                 "power": 800,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Lava Release": {
                 "stats": {
@@ -2042,7 +2512,7 @@
                     "Chakra Control": 400
                 },
                 "power": 900,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Shikotsumyaku": {
                 "stats": {
@@ -2053,7 +2523,7 @@
                     "Taijutsu": 900
                 },
                 "power": 950,
-                "category": "kekkei"
+                "category": "body transformation"
             },
             "Maddosukin": {
                 "stats": {
@@ -2070,7 +2540,7 @@
                     "Speed": 2500
                 },
                 "power": 2500,
-                "category": "kekkei"
+                "category": "body transformation"
             },
             "Ketsuryugan": {
                 "stats": {
@@ -2118,7 +2588,7 @@
                     "Taijutsu": 450
                 },
                 "power": 900,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Storm Release": {
                 "stats": {
@@ -2129,7 +2599,7 @@
                     "Speed": 550
                 },
                 "power": 950,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Magnet Release": {
                 "stats": {
@@ -2140,7 +2610,7 @@
                     "Genjutsu": 300
                 },
                 "power": 875,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Explosion Release": {
                 "stats": {
@@ -2151,7 +2621,7 @@
                     "Chakra Control": 550
                 },
                 "power": 900,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Scorch Release": {
                 "stats": {
@@ -2162,7 +2632,7 @@
                     "Speed": 350
                 },
                 "power": 900,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Crystal Release": {
                 "stats": {
@@ -2173,7 +2643,7 @@
                     "Chakra Reserves": 300
                 },
                 "power": 925,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Steel Release": {
                 "stats": {
@@ -2183,7 +2653,7 @@
                     "Taijutsu": 500
                 },
                 "power": 875,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Swift Release": {
                 "stats": {
@@ -2194,7 +2664,7 @@
                     "Taijutsu": 400
                 },
                 "power": 900,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Dark Release": {
                 "stats": {
@@ -2205,7 +2675,7 @@
                     "Chakra Control": 650
                 },
                 "power": 1050,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Dust Release": {
                 "stats": {
@@ -2216,7 +2686,7 @@
                     "Chakra Reserves": 800
                 },
                 "power": 1600,
-                "category": "kekkei"
+                "category": "nature"
             },
             "Sage Transformation": {
                 "stats": {
@@ -2229,7 +2699,7 @@
                     "Chakra Reserves": 600
                 },
                 "power": 1100,
-                "category": "kekkei"
+                "category": "body transformation"
             },
             "Kurama Genjutsu": {
                 "stats": {
@@ -2240,7 +2710,7 @@
                     "Chakra Control": 500
                 },
                 "power": 1000,
-                "category": "kekkei"
+                "category": "dojutsu"
             },
             "Adamantine Chains": {
                 "stats": {
@@ -2252,7 +2722,7 @@
                     "Chakra Control": 450
                 },
                 "power": 1000,
-                "category": "kekkei"
+                "category": "body transformation"
             },
             "Smoke Transformation": {
                 "stats": {
@@ -2263,7 +2733,7 @@
                     "Chakra Control": 500
                 },
                 "power": 850,
-                "category": "kekkei"
+                "category": "body transformation"
             }
         },
         "chakra_natures": {
@@ -3347,6 +3817,19 @@
     "MARKET": {
         "enabled": true,
         "channel_id": 0,
-        "max_open_listings_per_player": 10
+        "sale_id_prefix": "MKT",
+        "max_price": 10000000,
+        "min_price": 1,
+        "listing_fee_percent": 0
+    },
+    "LEVEL_CAPS": {
+        "enabled": true,
+        "stat_base_cap": 250,
+        "stat_cap_per_level": 35,
+        "skill_base_cap": 10000,
+        "skill_cap_per_level": 550,
+        "absolute_stat_cap": 10000,
+        "absolute_skill_cap": 50000,
+        "devmode_ignores_caps": true
     }
 }
