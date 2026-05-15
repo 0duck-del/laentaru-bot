@@ -1126,7 +1126,6 @@ async def start_tournament_duel(channel, user_id_a, user_id_b):
         "guard": {user_id_a: False, user_id_b: False},
         "statuses": {user_id_a: {}, user_id_b: {}},
         "jutsu_cooldowns": {user_id_a: {}, user_id_b: {}},
-        "transformation_failures": {user_id_a: 0, user_id_b: 0},
         "turn": first_turn,
         "round": 1,
         "started_at": now_utc().isoformat(),
@@ -3264,7 +3263,6 @@ async def start_turn_based_duel(ctx, challenger, opponent):
         "guard": {challenger_id: False, opponent_id: False},
         "statuses": {challenger_id: {}, opponent_id: {}},
         "jutsu_cooldowns": {challenger_id: {}, opponent_id: {}},
-        "transformation_failures": {challenger_id: 0, opponent_id: 0},
         "turn": first_turn,
         "round": 1,
         "started_at": now_utc().isoformat(),
@@ -3426,24 +3424,13 @@ async def handle_turn_action(ctx, action_type, jutsu_name=None):
         chance = config.get("transformation_stun_chance", 65) + actor_player.get("affinities", {}).get("Chakra Control", 0) // config.get("transformation_control_divisor", 500)
         chance = min(config.get("transformation_stun_cap", 90), chance)
         success_turns = int(config.get("transformation_success_stun_turns", 2))
-
-        # Backfire scaling is based on FAILED transformations only.
-        # Example: success first, fail second = 2-turn self stun.
-        # Fail first = 2 turns, fail second = 4 turns, fail third = 8 turns.
-        base_fail_turns = int(config.get("transformation_fail_self_stun_turns", 2))
-        max_fail_turns = int(config.get("transformation_fail_self_stun_max_turns", 8))
-        failure_counts = duel.setdefault("transformation_failures", {})
-        previous_failures = int(failure_counts.get(actor_id, 0))
-        fail_turns = min(max_fail_turns, base_fail_turns * (2 ** previous_failures))
-
+        fail_turns = int(config.get("transformation_fail_self_stun_turns", 1))
         if not tsuchi_immune_to_status(opponent_player) and random.randint(1, 100) <= chance:
             add_status_effect(duel, opponent_id, "stun", success_turns, 0)
             messages.append(f"🪵 {ctx.author.mention} used **Transformation** and fooled {get_duel_member_text(duel, opponent_id)}. They are stunned for **{success_turns} turns**. {build_cost_text(stamina_cost, chakra_cost)}")
         else:
-            failure_counts[actor_id] = previous_failures + 1
             add_status_effect(duel, actor_id, "stun", fail_turns, 0)
-            turn_word = "turn" if fail_turns == 1 else "turns"
-            messages.append(f"🪵 {ctx.author.mention} used **Transformation**, but it backfired. The backlash stuns **you** for **{fail_turns} {turn_word}**. {build_cost_text(stamina_cost, chakra_cost)}")
+            messages.append(f"🪵 {ctx.author.mention} used **Transformation**, but it failed. The backlash stuns **you** for **{fail_turns} turn**. {build_cost_text(stamina_cost, chakra_cost)}")
     elif action_type == "genjutsu":
         config = get_pvp_config()
         chance = config.get("genjutsu_apply_chance", 60) + actor_player.get("affinities", {}).get("Genjutsu", 0) // config.get("genjutsu_apply_divisor", 450)
@@ -4773,7 +4760,7 @@ async def cooldowns(ctx):
 
 
 @bot.command(name="use")
-async def use_item(ctx, *, item_name: str):
+async def use_item(ctx, *, item_input: str = None):
     players = migrate_all_players(load_players())
     user_id = str(ctx.author.id)
 
@@ -4781,21 +4768,58 @@ async def use_item(ctx, *, item_name: str):
         await send_notice(ctx, "Profile Required", "Use `$start` first to create your shinobi profile.", "warning")
         return
 
+    if not item_input or not item_input.strip():
+        await send_notice(ctx, "Missing Item", "Use `$use [item]` or `$use [item] [qty]`.", "warning")
+        return
+
+    # Supports both `$use Medical Kit` and `$use Medical Kit 3`.
+    item_text = item_input.strip()
+    quantity = 1
+    parts = item_text.rsplit(" ", 1)
+    if len(parts) == 2 and parts[1].isdigit():
+        item_text = parts[0].strip()
+        quantity = int(parts[1])
+
+    if quantity < 1:
+        await send_notice(ctx, "Invalid Quantity", "Quantity must be at least **1**.", "warning")
+        return
+
     player = players[user_id]
-    matched_item = find_inventory_item(player, item_name)
+    if not isinstance(player.get("inventory"), dict):
+        player["inventory"] = {}
+
+    matched_item = find_inventory_item(player, item_text)
 
     if not matched_item or matched_item not in ITEMS:
         await send_notice(ctx, "Item Not Found", "You either do not own that item, or it is not configured.", "warning")
         return
 
+    owned_qty = int(player.get("inventory", {}).get(matched_item, 0) or 0)
+    if owned_qty <= 0:
+        # Clean up broken zero/negative inventory entries so they cannot be used forever.
+        player.get("inventory", {}).pop(matched_item, None)
+        save_players(players)
+        await send_notice(ctx, "Item Not Owned", f"You do not own **{matched_item}**.", "warning")
+        return
+
+    if owned_qty < quantity:
+        await send_notice(
+            ctx,
+            "Not Enough Items",
+            f"You tried to use **{fmt_num(quantity)}x {matched_item}**, but you only have **{fmt_num(owned_qty)}**.",
+            "warning",
+        )
+        return
+
     item_data = ITEMS[matched_item]
     effect = item_data.get("effect")
     boost = int(item_data.get("boost", 0))
-    effect_text = f"+{fmt_num(boost)} {effect}"
+    total_boost = boost * quantity
+    effect_text = f"+{fmt_num(total_boost)} {effect}"
 
     if effect == "Rerolls":
-        player["rerolls_remaining"] = int(player.get("rerolls_remaining", REROLLS_PER_PLAYER)) + boost
-        effect_text = f"+{fmt_num(boost)} rerolls"
+        player["rerolls_remaining"] = int(player.get("rerolls_remaining", REROLLS_PER_PLAYER)) + total_boost
+        effect_text = f"+{fmt_num(total_boost)} rerolls"
 
     elif effect == "Bloodline Fragment":
         bloodlines = get_player_bloodlines(player)
@@ -4803,10 +4827,14 @@ async def use_item(ctx, *, item_name: str):
             await send_notice(ctx, "No Bloodline", "You need a Kekkei Genkai before this item can create a fragment.", "warning")
             return
         chosen = bloodlines[0]
-        player.setdefault("bloodline_fragments", {})[chosen] = int(player.setdefault("bloodline_fragments", {}).get(chosen, 0)) + max(1, boost)
-        effect_text = f"+{max(1, boost)} **{chosen}** fragment"
+        fragment_gain = max(1, boost) * quantity
+        player.setdefault("bloodline_fragments", {})[chosen] = int(player.setdefault("bloodline_fragments", {}).get(chosen, 0)) + fragment_gain
+        effect_text = f"+{fmt_num(fragment_gain)} **{chosen}** fragment(s)"
 
     elif effect == "Learn Kekkei Jutsu":
+        if quantity > 1:
+            await send_notice(ctx, "Use One At A Time", "Jutsu learning scrolls should be used one at a time so extra scrolls are not wasted.", "warning")
+            return
         learned = sync_all_kekkei_jutsu(player)
         if not learned:
             await send_notice(ctx, "No New Jutsu", "You already know your available Kekkei Genkai jutsu, or you do not own a bloodline with configured jutsu.", "warning")
@@ -4814,29 +4842,36 @@ async def use_item(ctx, *, item_name: str):
         effect_text = "Learned: " + compact_list(learned, "None", 6)
 
     elif effect in player.get("stats", {}):
-        player["stats"][effect] += boost
+        player["stats"][effect] += total_boost
 
     elif player.get("affinities") and effect in player["affinities"]:
-        player["affinities"][effect] += boost
+        player["affinities"][effect] += total_boost
 
     elif effect == "Market Fee Waiver":
-        player["market_fee_waivers"] = int(player.get("market_fee_waivers", 0)) + max(1, boost)
-        effect_text = f"+{max(1, boost)} market fee waiver"
+        waiver_gain = max(1, boost) * quantity
+        player["market_fee_waivers"] = int(player.get("market_fee_waivers", 0)) + waiver_gain
+        effect_text = f"+{fmt_num(waiver_gain)} market fee waiver(s)"
 
     else:
         await send_notice(ctx, "Item Effect Not Supported", f"**{matched_item}** uses effect `{effect}`, but that effect is not supported yet.", "warning")
         return
 
-    remove_item(player, matched_item)
+    if not remove_item(player, matched_item, quantity):
+        await send_notice(ctx, "Use Failed", "Inventory changed before the item could be consumed. Try again.", "warning")
+        return
+
     apply_player_caps(player)
     player["hidden_skill_score"] = calculate_hidden_skill_score(player)
 
     save_players(players)
 
-    embed = ui_embed("Item Used", f"{ctx.author.mention} used **{matched_item}**.", "success")
+    used_text = f"{fmt_num(quantity)}x **{matched_item}**" if quantity > 1 else f"**{matched_item}**"
+    embed = ui_embed("Item Used", f"{ctx.author.mention} used {used_text}.", "success")
     add_field(embed, "Effect", effect_text, False)
+    remaining_qty = int(player.get("inventory", {}).get(matched_item, 0) or 0)
+    add_field(embed, "Remaining", f"{fmt_num(remaining_qty)}x {matched_item}", True)
     if effect == "Rerolls":
-        add_field(embed, "Rerolls Remaining", fmt_num(player.get("rerolls_remaining", 0)), False)
+        add_field(embed, "Rerolls Remaining", fmt_num(player.get("rerolls_remaining", 0)), True)
     await ctx.send(embed=embed)
 
 
