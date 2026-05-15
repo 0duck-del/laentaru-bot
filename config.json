@@ -1927,7 +1927,7 @@
             }
         }
     },
-    "BOT_VERSION": "2.1.0",
+    "BOT_VERSION": "2.1.0-hotfix1",
     "REROLLS_PER_PLAYER": 10,
     "TOURNAMENT": {
         "min_win_chance": 0.18,
