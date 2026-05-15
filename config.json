@@ -2252,7 +2252,8 @@
         "jutsu_global_cooldown_turns": 1,
         "jutsu_same_cooldown_turns": 3,
         "transformation_success_stun_turns": 2,
-        "transformation_fail_self_stun_turns": 1
+        "transformation_fail_self_stun_turns": 2,
+        "transformation_fail_self_stun_max_turns": 8
     },
     "UI": {
         "embed_color_primary": "orange",
