@@ -107,7 +107,15 @@
         "Dark Release",
         "Dust Release",
         "Sage Transformation",
-        "Kurama Genjutsu"
+        "Kurama Genjutsu",
+        "Inferno Release",
+        "Typhoon Release",
+        "Plasma Release",
+        "Iron Sand Release",
+        "Mud Release",
+        "Corrosion Release",
+        "Crystal Ice Release",
+        "Thunderstorm Release"
     ],
     "CLANS": {
         "Civilian": {
@@ -508,6 +516,101 @@
                 "Genjutsu": 1000,
                 "Chakra Control": 700
             }
+        },
+        "Kazekage Clan": {
+            "weight": 2,
+            "affinity_bonus": {
+                "Chakra Control": 900,
+                "Durability": 500
+            },
+            "kekkei_chance": 24,
+            "possible_kekkei": [
+                "Magnet Release",
+                "Iron Sand Release"
+            ],
+            "stat_bonus": {
+                "Durability": 50
+            },
+            "skill_bonus": {
+                "Chakra Control": 900
+            }
+        },
+        "Raikage Lineage": {
+            "weight": 2,
+            "affinity_bonus": {
+                "Speed": 1200,
+                "Taijutsu": 800
+            },
+            "kekkei_chance": 10,
+            "possible_kekkei": [
+                "Storm Release",
+                "Thunderstorm Release"
+            ],
+            "stat_bonus": {
+                "Stamina": 60
+            },
+            "skill_bonus": {
+                "Speed": 1200,
+                "Taijutsu": 800
+            }
+        },
+        "Otsutsuki Remnant": {
+            "weight": 0.25,
+            "affinity_bonus": {
+                "Chakra Reserves": 2200,
+                "Chakra Control": 1500,
+                "Genjutsu": 800
+            },
+            "kekkei_chance": 35,
+            "possible_kekkei": [
+                "Rinnegan",
+                "Tenseigan"
+            ],
+            "stat_bonus": {
+                "Health": 100,
+                "Accuracy": 75
+            },
+            "skill_bonus": {
+                "Chakra Reserves": 2200,
+                "Chakra Control": 1500
+            }
+        },
+        "Iburi Branch": {
+            "weight": 3,
+            "affinity_bonus": {
+                "Speed": 750,
+                "Chakra Control": 600
+            },
+            "kekkei_chance": 18,
+            "possible_kekkei": [
+                "Smoke Transformation",
+                "Typhoon Release"
+            ],
+            "stat_bonus": {
+                "Accuracy": 25
+            },
+            "skill_bonus": {
+                "Speed": 750,
+                "Chakra Control": 600
+            }
+        },
+        "Forge Clan": {
+            "weight": 3,
+            "affinity_bonus": {
+                "Durability": 900,
+                "Chakra Control": 600
+            },
+            "kekkei_chance": 16,
+            "possible_kekkei": [
+                "Steel Release",
+                "Plasma Release"
+            ],
+            "stat_bonus": {
+                "Durability": 80
+            },
+            "skill_bonus": {
+                "Chakra Control": 600
+            }
         }
     },
     "ITEMS": {
@@ -693,6 +796,116 @@
             "effect": "Market Fee Waiver",
             "boost": 1,
             "description": "Future-ready utility item for market fee systems."
+        },
+        "Village Supply Crate": {
+            "rarity": "Rare",
+            "effect": "Village Donation Boost",
+            "boost": 500,
+            "description": "A crate of supplies that can be sold, traded, or saved for village-focused events.",
+            "use_cases": [
+                "Good market item for village economy players.",
+                "Can be used as a roleplay reward for war/event participation.",
+                "Future-ready for village fund bonuses."
+            ]
+        },
+        "Kage Medal": {
+            "rarity": "Legendary",
+            "effect": "Village Prestige",
+            "boost": 1,
+            "description": "A medal awarded to major village contributors.",
+            "use_cases": [
+                "Reward top village donors.",
+                "Trade as a high-prestige collectible.",
+                "Use as a future requirement for elite village ranks."
+            ]
+        },
+        "War Banner": {
+            "rarity": "Epic",
+            "effect": "War Utility",
+            "boost": 1,
+            "description": "A symbolic banner carried into village wars.",
+            "use_cases": [
+                "Reward war voters or war winners.",
+                "Useful as a market collectible.",
+                "Future-ready for war power buffs."
+            ]
+        },
+        "Chakra Forge Ember": {
+            "rarity": "Epic",
+            "effect": "Chakra Control",
+            "boost": 160,
+            "description": "A hot ember from a chakra forge that sharpens control.",
+            "use_cases": [
+                "Use to boost Chakra Control.",
+                "Strong for jutsu-heavy builds.",
+                "Valuable market item for casters."
+            ]
+        },
+        "Mist Assassin Mask": {
+            "rarity": "Rare",
+            "effect": "Speed",
+            "boost": 85,
+            "description": "A mask used by silent hunters of the mist.",
+            "use_cases": [
+                "Use to improve Speed.",
+                "Good for dodge and fast-strike builds.",
+                "Fits Mist/Sound roleplay builds."
+            ]
+        },
+        "Senju Root Charm": {
+            "rarity": "Legendary",
+            "effect": "Health",
+            "boost": 130,
+            "description": "A living charm pulsing with Senju-style vitality.",
+            "use_cases": [
+                "Use to increase Health.",
+                "Strong for tank builds.",
+                "Pairs well with Wood Release users."
+            ]
+        },
+        "Uchiha War Fan Fragment": {
+            "rarity": "Legendary",
+            "effect": "Genjutsu",
+            "boost": 150,
+            "description": "A broken fan fragment carrying intense battle memory.",
+            "use_cases": [
+                "Use to increase Genjutsu.",
+                "Great for Sharingan and illusion builds.",
+                "High-value trade item."
+            ]
+        },
+        "Hyuga Focus Beads": {
+            "rarity": "Epic",
+            "effect": "Accuracy",
+            "boost": 120,
+            "description": "Beads used to sharpen focus and precision.",
+            "use_cases": [
+                "Use to boost Accuracy.",
+                "Helps heavy attacks and jutsu consistency.",
+                "Fits Byakugan/Taijutsu builds."
+            ]
+        },
+        "Dust Relic Shard": {
+            "rarity": "Mythic",
+            "effect": "Chakra Control",
+            "boost": 240,
+            "description": "A dangerous relic shard tied to particle-style chakra control.",
+            "use_cases": [
+                "Use for a massive Chakra Control boost.",
+                "Ideal for rare Dust Release users.",
+                "Extremely valuable market item."
+            ]
+        },
+        "Beast Seal Ink": {
+            "rarity": "Mythic",
+            "effect": "Chakra Reserves",
+            "boost": 260,
+            "description": "Rare ink used in high-level sealing rituals.",
+            "use_cases": [
+                "Use to boost Chakra Reserves.",
+                "Excellent for jutsu-heavy and Jinchuriki builds.",
+                "Great boss/event reward."
+            ]
         }
     },
     "ITEM_DROP_TABLE": [
@@ -726,7 +939,10 @@
                 "Chakra Battery",
                 "Stamina Seal",
                 "Armor Plating",
-                "Precision Senbon"
+                "Precision Senbon",
+                "Mist Assassin Mask",
+                "Hyuga Focus Beads",
+                "Village Supply Crate"
             ]
         },
         {
@@ -742,7 +958,12 @@
                 "Chakra Control Seal",
                 "Speed Anklets",
                 "Bloodline Primer",
-                "Jutsu Archive Scroll"
+                "Jutsu Archive Scroll",
+                "War Banner",
+                "Chakra Forge Ember",
+                "Kage Medal",
+                "Senju Root Charm",
+                "Uchiha War Fan Fragment"
             ]
         },
         {
@@ -750,7 +971,9 @@
             "items": [
                 "Tailed Beast Chakra Fragment",
                 "Ancient Kekkei Relic",
-                "Six Paths Fragment"
+                "Six Paths Fragment",
+                "Dust Relic Shard",
+                "Beast Seal Ink"
             ]
         }
     ],
@@ -957,7 +1180,15 @@
             "Sage Transformation",
             "Kurama Genjutsu",
             "Adamantine Chains",
-            "Smoke Transformation"
+            "Smoke Transformation",
+            "Inferno Release",
+            "Typhoon Release",
+            "Plasma Release",
+            "Iron Sand Release",
+            "Mud Release",
+            "Corrosion Release",
+            "Crystal Ice Release",
+            "Thunderstorm Release"
         ],
         "dojutsu_pool": [
             "Sharingan",
@@ -1925,9 +2156,189 @@
                 "damage": 0,
                 "miss_penalty": 0.12
             }
+        },
+        "Inferno Black Flame": {
+            "type": "Kekkei Genkai",
+            "description": "Inferno Release coats the battlefield in black flame pressure.",
+            "chakra_cost": 150,
+            "base_power": 165,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 100,
+            "requirements": {
+                "level": 14,
+                "kekkei_genkai": "Inferno Release"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 50,
+                "turns": 3,
+                "damage": 12
+            }
+        },
+        "Typhoon Spiral Crash": {
+            "type": "Kekkei Genkai",
+            "description": "A violent Typhoon Release vortex that damages and disrupts accuracy.",
+            "chakra_cost": 135,
+            "base_power": 150,
+            "scaling": "Speed",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 12,
+                "kekkei_genkai": "Typhoon Release"
+            },
+            "status_effect": {
+                "type": "confused",
+                "chance": 35,
+                "turns": 2,
+                "damage": 0,
+                "miss_penalty": 0.15
+            }
+        },
+        "Plasma Lance": {
+            "type": "Kekkei Genkai",
+            "description": "A concentrated Plasma Release spear that pierces through guard pressure.",
+            "chakra_cost": 155,
+            "base_power": 175,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 95,
+            "requirements": {
+                "level": 15,
+                "kekkei_genkai": "Plasma Release"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 38,
+                "turns": 3,
+                "damage": 14
+            }
+        },
+        "Iron Sand Burial": {
+            "type": "Kekkei Genkai",
+            "description": "Iron Sand crushes the enemy and can briefly stun them.",
+            "chakra_cost": 145,
+            "base_power": 160,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 14,
+                "kekkei_genkai": "Iron Sand Release"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 28,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Mud Mire Trap": {
+            "type": "Kekkei Genkai",
+            "description": "Mud Release traps the opponent and slows their rhythm.",
+            "chakra_cost": 115,
+            "base_power": 125,
+            "scaling": "Durability",
+            "scaling_divisor": 120,
+            "requirements": {
+                "level": 9,
+                "kekkei_genkai": "Mud Release"
+            },
+            "status_effect": {
+                "type": "confused",
+                "chance": 30,
+                "turns": 2,
+                "damage": 0,
+                "miss_penalty": 0.1
+            }
+        },
+        "Corrosion Veil": {
+            "type": "Kekkei Genkai",
+            "description": "A corrosive chakra mist that burns through endurance over time.",
+            "chakra_cost": 140,
+            "base_power": 155,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 13,
+                "kekkei_genkai": "Corrosion Release"
+            },
+            "status_effect": {
+                "type": "burn",
+                "chance": 46,
+                "turns": 3,
+                "damage": 11
+            }
+        },
+        "Crystal Ice Coffin": {
+            "type": "Kekkei Genkai",
+            "description": "A hybrid crystal-ice prison that punishes fast opponents.",
+            "chakra_cost": 145,
+            "base_power": 158,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 105,
+            "requirements": {
+                "level": 14,
+                "kekkei_genkai": "Crystal Ice Release"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 24,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Thunderstorm Judgment": {
+            "type": "Kekkei Genkai",
+            "description": "A storm-charged lightning technique that hits hard and can stun.",
+            "chakra_cost": 165,
+            "base_power": 185,
+            "scaling": "Speed",
+            "scaling_divisor": 95,
+            "requirements": {
+                "level": 16,
+                "kekkei_genkai": "Thunderstorm Release"
+            },
+            "status_effect": {
+                "type": "stun",
+                "chance": 32,
+                "turns": 1,
+                "damage": 0
+            }
+        },
+        "Leaf Flash Kick": {
+            "type": "Taijutsu",
+            "description": "A clean high-speed taijutsu opener for early duel builds.",
+            "chakra_cost": 45,
+            "base_power": 70,
+            "scaling": "Taijutsu",
+            "scaling_divisor": 150,
+            "requirements": {
+                "level": 4
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 10,
+                "turns": 2,
+                "damage": 3
+            }
+        },
+        "Chakra Scalpel": {
+            "type": "Medical Ninjutsu",
+            "description": "A precise chakra strike that rewards control and accuracy.",
+            "chakra_cost": 95,
+            "base_power": 115,
+            "scaling": "Chakra Control",
+            "scaling_divisor": 125,
+            "requirements": {
+                "level": 10
+            },
+            "status_effect": {
+                "type": "bleed",
+                "chance": 28,
+                "turns": 2,
+                "damage": 7
+            }
         }
     },
-    "BOT_VERSION": "2.1.0-hotfix1",
+    "BOT_VERSION": "3.0.2-village-war",
     "REROLLS_PER_PLAYER": 10,
     "TOURNAMENT": {
         "min_win_chance": 0.18,
@@ -2125,7 +2536,15 @@
             "Sage Transformation": 1100,
             "Kurama Genjutsu": 1000,
             "Adamantine Chains": 1000,
-            "Smoke Transformation": 850
+            "Smoke Transformation": 850,
+            "Inferno Release": 1100,
+            "Typhoon Release": 950,
+            "Plasma Release": 1150,
+            "Iron Sand Release": 1050,
+            "Mud Release": 850,
+            "Corrosion Release": 1050,
+            "Crystal Ice Release": 1000,
+            "Thunderstorm Release": 1150
         },
         "base_power_by_dojutsu": {
             "Sharingan": 850,
@@ -2735,6 +3154,70 @@
                 },
                 "power": 850,
                 "category": "body transformation"
+            },
+            "Inferno Release": {
+                "category": "nature",
+                "power": 1100,
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 250
+                }
+            },
+            "Typhoon Release": {
+                "category": "nature",
+                "power": 950,
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 250
+                }
+            },
+            "Plasma Release": {
+                "category": "nature",
+                "power": 1150,
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 250
+                }
+            },
+            "Iron Sand Release": {
+                "category": "nature",
+                "power": 1050,
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 250
+                }
+            },
+            "Mud Release": {
+                "category": "nature",
+                "power": 850,
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 250
+                }
+            },
+            "Corrosion Release": {
+                "category": "nature",
+                "power": 1050,
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 250
+                }
+            },
+            "Crystal Ice Release": {
+                "category": "nature",
+                "power": 1000,
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 250
+                }
+            },
+            "Thunderstorm Release": {
+                "category": "nature",
+                "power": 1150,
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 250
+                }
             }
         },
         "chakra_natures": {
@@ -3821,7 +4304,9 @@
         "sale_id_prefix": "MKT",
         "max_price": 10000000,
         "min_price": 1,
-        "listing_fee_percent": 0
+        "listing_fee_percent": 0,
+        "tax_percent": 0.05,
+        "max_open_listings_per_player": 10
     },
     "LEVEL_CAPS": {
         "enabled": true,
@@ -3832,5 +4317,50 @@
         "absolute_stat_cap": 10000,
         "absolute_skill_cap": 50000,
         "devmode_ignores_caps": true
+    },
+    "VILLAGE_EXPANSION": {
+        "max_level": 25,
+        "base_level_cost": 5000,
+        "level_cost_growth": 1.35,
+        "skill_bonus_per_level": 75,
+        "training_xp_bonus_per_level": 1,
+        "power_bonus_percent_per_level": 0.01,
+        "war_min_yes_votes": 2,
+        "war_win_power_reward": 500,
+        "war_win_fund_reward": 2500,
+        "war_win_power_percent": 0.015,
+        "ranks": [
+            {
+                "name": "Villager",
+                "min_donated": 0
+            },
+            {
+                "name": "Village Supporter",
+                "min_donated": 1000
+            },
+            {
+                "name": "Village Donor",
+                "min_donated": 5000
+            },
+            {
+                "name": "Quartermaster",
+                "min_donated": 15000
+            },
+            {
+                "name": "War Sponsor",
+                "min_donated": 35000
+            },
+            {
+                "name": "Village Elder",
+                "min_donated": 75000
+            },
+            {
+                "name": "Kage Patron",
+                "min_donated": 150000
+            }
+        ],
+        "war_duration_hours": 24,
+        "war_player_ryo_reward": 2500,
+        "war_village_fund_reward": 2500
     }
 }
