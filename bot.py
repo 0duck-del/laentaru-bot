@@ -50,6 +50,8 @@ DATA_DIR = get_data_dir()
 DATA_FILE = DATA_DIR / "players.json"
 LOTTERY_FILE = DATA_DIR / "lottery.json"
 MARKET_FILE = DATA_DIR / "market.json"
+VILLAGE_FILE = DATA_DIR / "villages.json"
+BOUNTY_FILE = DATA_DIR / "bounties.json"
 CONFIG_FILE = Path("config.json")
 
 if not DATA_FILE.exists():
@@ -78,7 +80,7 @@ def validate_config(config):
 
 CONFIG = load_config()
 validate_config(CONFIG)
-BOT_VERSION = CONFIG.get("BOT_VERSION", "2.1.0")
+BOT_VERSION = CONFIG.get("BOT_VERSION", "3.0.1-village-content")
 REROLLS_PER_PLAYER = int(CONFIG.get("REROLLS_PER_PLAYER", 3))
 
 # Everything below is sourced from config.json so you can balance the bot without editing code.
@@ -111,6 +113,7 @@ DUEL_REQUESTS = {}
 ACTIVE_DUELS = {}
 ACTIVE_TRADES = {}
 ACTIVE_BEAST_DUELS = {}
+ACTIVE_WAR_VOTES = {}
 RANDOM_EVENT_TASK_STARTED = False
 LOTTERY_TASK_STARTED = False
 
@@ -432,6 +435,412 @@ def save_lottery(state):
     tmp_file.replace(LOTTERY_FILE)
 
 
+
+# -----------------------------
+# v3.0 Village Expansion Utilities
+# -----------------------------
+
+def get_village_expansion_config():
+    return CONFIG.get("VILLAGE_EXPANSION", {})
+
+
+def get_village_max_level():
+    return int(get_village_expansion_config().get("max_level", 25))
+
+
+def get_village_level_requirement(level):
+    cfg = get_village_expansion_config()
+    level = max(1, int(level))
+    base = int(cfg.get("base_level_cost", 5000))
+    growth = float(cfg.get("level_cost_growth", 1.35))
+    return int(base * (level ** growth))
+
+
+def get_village_dynamic_bonus(level):
+    cfg = get_village_expansion_config()
+    level = max(1, int(level))
+    return {
+        "skill_bonus": int(cfg.get("skill_bonus_per_level", 75)) * level,
+        "training_xp_bonus": int(cfg.get("training_xp_bonus_per_level", 1)) * level,
+        "power_bonus_percent": float(cfg.get("power_bonus_percent_per_level", 0.01)) * level,
+    }
+
+
+def get_village_rank_config():
+    return get_village_expansion_config().get("ranks", [
+        {"name": "Villager", "min_donated": 0},
+        {"name": "Supporter", "min_donated": 1000},
+        {"name": "Quartermaster", "min_donated": 5000},
+        {"name": "War Sponsor", "min_donated": 15000},
+        {"name": "Village Elder", "min_donated": 50000},
+        {"name": "Kage Patron", "min_donated": 150000},
+    ])
+
+
+def get_village_rank_name(total_donated):
+    total_donated = int(total_donated or 0)
+    rank_name = "Villager"
+    for rank in sorted(get_village_rank_config(), key=lambda r: int(r.get("min_donated", 0))):
+        if total_donated >= int(rank.get("min_donated", 0)):
+            rank_name = rank.get("name", rank_name)
+    return rank_name
+
+
+def get_default_village_state():
+    state = {"villages": {}, "wars": [], "last_reset_at": now_utc().isoformat()}
+    for village_name in VILLAGES:
+        state["villages"][village_name] = {
+            "level": 0,
+            "fund": 0,
+            "total_donated": 0,
+            "war_wins": 0,
+            "war_losses": 0,
+            "power_level": 0,
+            "donors": {}
+        }
+    return state
+
+
+def load_village_state():
+    if not VILLAGE_FILE.exists():
+        state = get_default_village_state()
+        save_village_state(state)
+        return state
+
+    try:
+        with open(VILLAGE_FILE, "r", encoding="utf-8") as file:
+            state = json.load(file)
+    except json.JSONDecodeError:
+        backup_file = VILLAGE_FILE.with_suffix(f".broken-{int(datetime.now().timestamp())}.json")
+        VILLAGE_FILE.replace(backup_file)
+        state = get_default_village_state()
+        save_village_state(state)
+        print(f"WARNING: villages.json was invalid JSON. Backed it up to {backup_file}")
+        return state
+
+    state.setdefault("villages", {})
+    state.setdefault("wars", [])
+    for village_name in VILLAGES:
+        state["villages"].setdefault(village_name, {
+            "level": 0,
+            "fund": 0,
+            "total_donated": 0,
+            "war_wins": 0,
+            "war_losses": 0,
+            "power_level": 0,
+            "donors": {}
+        })
+        state["villages"][village_name].setdefault("donors", {})
+        state["villages"][village_name].setdefault("power_level", 0)
+    return state
+
+
+def save_village_state(state):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_file = VILLAGE_FILE.with_suffix(".json.tmp")
+    with open(tmp_file, "w", encoding="utf-8") as file:
+        json.dump(state, file, indent=4)
+    tmp_file.replace(VILLAGE_FILE)
+
+
+def get_war_config():
+    return get_village_expansion_config()
+
+
+def get_war_duration_hours():
+    return int(get_war_config().get("war_duration_hours", 24))
+
+
+def get_war_player_reward():
+    return int(get_war_config().get("war_player_ryo_reward", 2500))
+
+
+def get_war_village_fund_reward():
+    return int(get_war_config().get("war_village_fund_reward", get_war_config().get("war_win_fund_reward", 2500)))
+
+
+def normalize_war_record(war):
+    war.setdefault("status", "active")
+    war.setdefault("score", {war.get("attacker"): 0, war.get("defender"): 0})
+    war.setdefault("duels", [])
+    war.setdefault("participants", {war.get("attacker"): [], war.get("defender"): []})
+    war.setdefault("winner", None)
+    war.setdefault("loser", None)
+    war.setdefault("resolved_at", None)
+    return war
+
+
+def get_active_village_wars(state):
+    wars = []
+    for war in state.get("wars", []):
+        normalize_war_record(war)
+        if war.get("status") == "active":
+            wars.append(war)
+    return wars
+
+
+def find_active_war_between(state, village_a, village_b):
+    if not village_a or not village_b or village_a == village_b:
+        return None
+    pair = {village_a, village_b}
+    for war in get_active_village_wars(state):
+        if {war.get("attacker"), war.get("defender")} == pair:
+            return war
+    return None
+
+
+def get_war_time_remaining_text(war):
+    started = parse_iso_datetime(war.get("started_at")) or now_utc()
+    ends_at = parse_iso_datetime(war.get("ends_at")) or (started + timedelta(hours=get_war_duration_hours()))
+    remaining = ends_at - now_utc()
+    if remaining.total_seconds() <= 0:
+        return "Ready to resolve"
+    total = int(remaining.total_seconds())
+    hours = total // 3600
+    minutes = (total % 3600) // 60
+    return f"{hours}h {minutes}m"
+
+
+def build_war_status_text(war):
+    normalize_war_record(war)
+    attacker = war.get("attacker")
+    defender = war.get("defender")
+    score = war.get("score", {})
+    return (
+        f"**{attacker}:** {fmt_num(score.get(attacker, 0))} wins\n"
+        f"**{defender}:** {fmt_num(score.get(defender, 0))} wins\n"
+        f"**Time Left:** {get_war_time_remaining_text(war)}\n"
+        f"**War Duels:** {fmt_num(len(war.get('duels', [])))}"
+    )
+
+
+def resolve_due_wars_for_state(state, players):
+    resolved = []
+    for war in get_active_village_wars(state):
+        ends_at = parse_iso_datetime(war.get("ends_at"))
+        if not ends_at:
+            started = parse_iso_datetime(war.get("started_at")) or now_utc()
+            ends_at = started + timedelta(hours=get_war_duration_hours())
+            war["ends_at"] = ends_at.isoformat()
+        if now_utc() < ends_at:
+            continue
+        result = resolve_single_village_war(state, players, war)
+        resolved.append(result)
+    return resolved
+
+
+def resolve_single_village_war(state, players, war):
+    normalize_war_record(war)
+    attacker = war.get("attacker")
+    defender = war.get("defender")
+    score = war.get("score", {})
+    attacker_score = int(score.get(attacker, 0))
+    defender_score = int(score.get(defender, 0))
+    war["status"] = "resolved"
+    war["resolved_at"] = now_utc().isoformat()
+    war["final_score"] = {attacker: attacker_score, defender: defender_score}
+
+    if attacker_score == defender_score:
+        war["winner"] = None
+        war["loser"] = None
+        war["result"] = "draw"
+        return {"war": war, "winner": None, "loser": None, "draw": True, "paid": []}
+
+    winner = attacker if attacker_score > defender_score else defender
+    loser = defender if winner == attacker else attacker
+    war["winner"] = winner
+    war["loser"] = loser
+    war["result"] = "win"
+
+    cfg = get_war_config()
+    power_reward = int(cfg.get("war_win_power_reward", 500))
+    village_reward = get_war_village_fund_reward()
+    player_reward = get_war_player_reward()
+
+    state["villages"][winner]["war_wins"] = int(state["villages"][winner].get("war_wins", 0)) + 1
+    state["villages"][winner]["power_level"] = int(state["villages"][winner].get("power_level", 0)) + power_reward
+    state["villages"][winner]["fund"] = int(state["villages"][winner].get("fund", 0)) + village_reward
+    state["villages"][loser]["war_losses"] = int(state["villages"][loser].get("war_losses", 0)) + 1
+
+    # Pay every winning-side fighter who actually participated in at least one war duel.
+    paid = []
+    participant_ids = set(war.get("participants", {}).get(winner, []))
+    for user_id in participant_ids:
+        player = players.get(str(user_id))
+        if player and player.get("village") == winner:
+            player["ryo"] = int(player.get("ryo", 0)) + player_reward
+            player["village_war_ryo_won"] = int(player.get("village_war_ryo_won", 0)) + player_reward
+            player["village_war_wins"] = int(player.get("village_war_wins", 0)) + 1
+            paid.append(str(user_id))
+
+    war["rewards"] = {
+        "player_ryo_each": player_reward,
+        "village_fund": village_reward,
+        "village_power": power_reward,
+        "paid_player_ids": paid,
+    }
+    process_village_level_ups(state["villages"][winner])
+    return {"war": war, "winner": winner, "loser": loser, "draw": False, "paid": paid}
+
+
+async def announce_resolved_village_wars(channel, resolved):
+    for result in resolved:
+        war = result["war"]
+        attacker = war.get("attacker")
+        defender = war.get("defender")
+        final = war.get("final_score", {})
+        if result.get("draw"):
+            embed = ui_embed("Village War Ended — Draw", f"**{attacker}** and **{defender}** ended tied.", "neutral")
+            add_field(embed, "Final Score", f"**{attacker}:** {fmt_num(final.get(attacker, 0))}\n**{defender}:** {fmt_num(final.get(defender, 0))}", False)
+            add_field(embed, "Rewards", "No winner rewards were paid because the war ended in a draw.", False)
+        else:
+            winner = result["winner"]
+            loser = result["loser"]
+            rewards = war.get("rewards", {})
+            paid_mentions = ", ".join(f"<@{uid}>" for uid in result.get("paid", [])[:20]) or "No eligible fighters"
+            if len(result.get("paid", [])) > 20:
+                paid_mentions += f" +{len(result.get('paid', [])) - 20} more"
+            embed = ui_embed("Village War Victory", f"**{winner}** defeated **{loser}** after 24 hours.", "danger")
+            add_field(embed, "Final Score", f"**{attacker}:** {fmt_num(final.get(attacker, 0))}\n**{defender}:** {fmt_num(final.get(defender, 0))}", False)
+            add_field(embed, "Rewards", f"Each winning fighter: **{fmt_num(rewards.get('player_ryo_each', 0))} Ryo**\nVillage Fund: **+{fmt_num(rewards.get('village_fund', 0))} Ryo**\nVillage Power: **+{fmt_num(rewards.get('village_power', 0))}**", False)
+            add_field(embed, "Paid Fighters", paid_mentions, False)
+        await channel.send(embed=embed)
+
+
+async def check_and_announce_due_village_wars(channel=None):
+    players = migrate_all_players(load_players())
+    state = load_village_state()
+    resolved = resolve_due_wars_for_state(state, players)
+    if resolved:
+        save_players(players)
+        save_village_state(state)
+        if channel:
+            await announce_resolved_village_wars(channel, resolved)
+    return resolved
+
+
+async def record_village_war_duel_result(channel, winner_id, loser_id):
+    players = migrate_all_players(load_players())
+    await check_and_announce_due_village_wars(channel)
+    state = load_village_state()
+    winner = players.get(str(winner_id))
+    loser = players.get(str(loser_id))
+    if not winner or not loser:
+        return None
+    winner_village = winner.get("village")
+    loser_village = loser.get("village")
+    war = find_active_war_between(state, winner_village, loser_village)
+    if not war:
+        return None
+
+    normalize_war_record(war)
+    war["score"][winner_village] = int(war.get("score", {}).get(winner_village, 0)) + 1
+    war.setdefault("participants", {}).setdefault(winner_village, [])
+    war.setdefault("participants", {}).setdefault(loser_village, [])
+    for village_name, uid in [(winner_village, str(winner_id)), (loser_village, str(loser_id))]:
+        if uid not in war["participants"].setdefault(village_name, []):
+            war["participants"][village_name].append(uid)
+    war.setdefault("duels", []).append({
+        "winner_id": str(winner_id),
+        "loser_id": str(loser_id),
+        "winner_village": winner_village,
+        "loser_village": loser_village,
+        "recorded_at": now_utc().isoformat(),
+        "channel_id": getattr(channel, "id", None),
+    })
+    save_village_state(state)
+    score = war.get("score", {})
+    return f"**Village War Point:** {winner_village} +1\n**Current War Score:** {winner_village} {fmt_num(score.get(winner_village, 0))} — {fmt_num(score.get(loser_village, 0))} {loser_village}\n**Time Left:** {get_war_time_remaining_text(war)}"
+
+
+def process_village_level_ups(village_data):
+    max_level = get_village_max_level()
+    leveled = 0
+    while int(village_data.get("level", 0)) < max_level:
+        next_level = int(village_data.get("level", 0)) + 1
+        requirement = get_village_level_requirement(next_level)
+        if int(village_data.get("fund", 0)) < requirement:
+            break
+        village_data["fund"] = int(village_data.get("fund", 0)) - requirement
+        village_data["level"] = next_level
+        leveled += 1
+    return leveled
+
+
+def get_village_state_for_player(player):
+    village_name = player.get("village")
+    if not village_name:
+        return None, None
+    state = load_village_state()
+    return village_name, state.get("villages", {}).get(village_name)
+
+
+def get_total_village_skill_bonus(village_name):
+    if not village_name:
+        return 0
+    static_bonus = int(CONFIG.get("VILLAGES", {}).get(village_name, {}).get("skill_bonus", 0))
+    state = load_village_state()
+    village_data = state.get("villages", {}).get(village_name, {})
+    dynamic = get_village_dynamic_bonus(int(village_data.get("level", 0)))
+    war_power = int(village_data.get("power_level", 0))
+    return static_bonus + dynamic["skill_bonus"] + war_power
+
+
+def get_total_village_training_bonus(village_name):
+    if not village_name:
+        return 0
+    static_bonus = int(CONFIG.get("VILLAGES", {}).get(village_name, {}).get("training_xp_bonus", 0))
+    state = load_village_state()
+    village_data = state.get("villages", {}).get(village_name, {})
+    dynamic = get_village_dynamic_bonus(int(village_data.get("level", 0)))
+    return static_bonus + dynamic["training_xp_bonus"]
+
+
+def get_village_power_multiplier(village_name):
+    if not village_name:
+        return 1.0
+    state = load_village_state()
+    village_data = state.get("villages", {}).get(village_name, {})
+    level = int(village_data.get("level", 0))
+    dynamic = get_village_dynamic_bonus(level)
+    war_bonus = int(village_data.get("war_wins", 0)) * float(get_village_expansion_config().get("war_win_power_percent", 0.015))
+    return 1.0 + dynamic["power_bonus_percent"] + war_bonus
+
+
+def load_bounties():
+    if not BOUNTY_FILE.exists():
+        state = {"next_id": 1, "bounties": {}, "history": []}
+        save_bounties(state)
+        return state
+    try:
+        with open(BOUNTY_FILE, "r", encoding="utf-8") as file:
+            state = json.load(file)
+    except json.JSONDecodeError:
+        backup_file = BOUNTY_FILE.with_suffix(f".broken-{int(datetime.now().timestamp())}.json")
+        BOUNTY_FILE.replace(backup_file)
+        state = {"next_id": 1, "bounties": {}, "history": []}
+        save_bounties(state)
+        return state
+    state.setdefault("next_id", 1)
+    state.setdefault("bounties", {})
+    state.setdefault("history", [])
+    return state
+
+
+def save_bounties(state):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp_file = BOUNTY_FILE.with_suffix(".json.tmp")
+    with open(tmp_file, "w", encoding="utf-8") as file:
+        json.dump(state, file, indent=4)
+    tmp_file.replace(BOUNTY_FILE)
+
+
+def get_bounty_id(state):
+    bounty_id = f"BNT-{int(state.get('next_id', 1)):05d}"
+    state["next_id"] = int(state.get("next_id", 1)) + 1
+    return bounty_id
+
+
 # -----------------------------
 # v2.1.0 Caps / Market / Bloodline Utilities
 # -----------------------------
@@ -672,6 +1081,10 @@ def migrate_player(player):
     player.setdefault("last_training", None)
     player.setdefault("known_jutsu", [])
     player.setdefault("village", None)
+    player.setdefault("village_donated", 0)
+    player.setdefault("village_rank", get_village_rank_name(player.get("village_donated", 0)))
+    player.setdefault("bounty_wins", 0)
+    player.setdefault("bounty_claimed_ryo", 0)
     player.setdefault("rerolls_remaining", REROLLS_PER_PLAYER)
     player.setdefault("ryo", CONFIG.get("ECONOMY", {}).get("starting_ryo", 0))
     player.setdefault("daily_streak", 0)
@@ -858,7 +1271,7 @@ def calculate_hidden_skill_score(player):
     nature_count = len(player.get("chakra_natures", []))
     nature_bonus = max(0, nature_count - 1) * skill_config.get("extra_chakra_nature_bonus", 750)
     village_name = player.get("village")
-    village_bonus = CONFIG.get("VILLAGES", {}).get(village_name, {}).get("skill_bonus", 0) if village_name else 0
+    village_bonus = get_total_village_skill_bonus(village_name) if village_name else 0
 
     return int((affinity_total + stat_total + kekkei_bonus + clan_bonus + nature_bonus + village_bonus) * level_multiplier)
 
@@ -1852,6 +2265,10 @@ def create_player(ctx):
         "last_training": None,
         "known_jutsu": [],
         "village": None,
+        "village_donated": 0,
+        "village_rank": "Villager",
+        "bounty_wins": 0,
+        "bounty_claimed_ryo": 0,
         "rerolls_remaining": REROLLS_PER_PLAYER,
         "ryo": CONFIG.get("ECONOMY", {}).get("starting_ryo", 0),
         "daily_streak": 0,
@@ -1877,7 +2294,7 @@ def get_village_training_xp_bonus(player):
     village_name = player.get("village")
     if not village_name:
         return 0
-    return CONFIG.get("VILLAGES", {}).get(village_name, {}).get("training_xp_bonus", 0)
+    return get_total_village_training_bonus(village_name)
 
 
 def player_meets_jutsu_requirements(player, jutsu_data):
@@ -2832,7 +3249,7 @@ def calculate_player_power_profile(player):
     raw *= scaling.get("clan_power_multiplier", {}).get(clan, 1.0)
 
     village_name = player.get("village")
-    village_bonus = CONFIG.get("VILLAGES", {}).get(village_name, {}).get("skill_bonus", 0) if village_name else 0
+    village_bonus = get_total_village_skill_bonus(village_name) if village_name else 0
     raw *= 1 + (village_bonus * scaling.get("village_power_multiplier_per_skill_bonus", 0.00008))
 
     global_power_scale = max(1, int(scaling.get("global_power_scale", 100)))
@@ -3205,6 +3622,10 @@ async def finish_turn_duel(ctx, duel_key, winner_id, loser_id):
             result += f"\n**Bloodline Evolution:** {evolution_upgrade}"
         if leveled_up:
             result += f"\n**Level Up:** +{levels_gained} level(s). Now level {winner_player['level']} — {winner_player['rank']}."
+
+    war_result = await record_village_war_duel_result(ctx.channel, winner_id, loser_id)
+    if war_result:
+        result += "\n\n" + war_result
 
     del ACTIVE_DUELS[duel_key]
     embed = ui_embed("Duel Complete", result, "success")
@@ -3689,7 +4110,7 @@ def build_player_profile_embed(member, player):
 
     add_field(embed, "Identity", "\n".join([
         kv_line("Clan", player.get("clan") or "Not rolled"),
-        kv_line("Village", player.get("village") or "None"),
+        kv_line("Village", format_player_village_title(player)),
         kv_line("Title", player.get("title") or "None"),
         bloodline_text,
         kv_line("Chakra Nature", compact_list(player.get("chakra_natures", []), "Not rolled")),
@@ -3784,6 +4205,19 @@ def build_damage_formula_text(player):
         f"**Softcaps:** Rating starts softcapping at {scaling.get('rating_softcap_start', 25000):,}; damage starts softcapping at {scaling.get('damage_softcap_start', 160):,}."
     ]
     return "\n".join(lines)
+
+
+def format_player_village_title(player):
+    village_name = player.get("village")
+    if not village_name:
+        return "None"
+    try:
+        state = load_village_state()
+        data = state.get("villages", {}).get(village_name, {})
+        level = int(data.get("level", 0))
+        return f"{village_name} — Level {level}/{get_village_max_level()}"
+    except Exception:
+        return village_name
 
 @bot.command(name="profile")
 async def profile(ctx, member: discord.Member = None):
@@ -4461,26 +4895,36 @@ def build_market_listing_embed(listing):
 
 
 @bot.group(name="market", invoke_without_command=True)
-async def market_command(ctx):
+async def market_command(ctx, *, search: str = None):
     state = load_market()
     listings = [
         listing for listing in state.get("listings", {}).values()
         if listing.get("status") == "open"
     ]
 
+    if search:
+        cleaned = search.lower().strip()
+        listings = [l for l in listings if cleaned in l.get("item", "").lower() or cleaned in l.get("seller_name", "").lower()]
+
     embed = ui_embed(
         "Player Market",
-        "Use `$market sell <item name> <price> [amount]` to list an item, or `$market buy <MARKET_ID>` to buy one.",
+        "Use `$market sell <item name> <price> [amount]`, `$market buy <MARKET_ID>`, `$market mine`, `$market history`, or `$market <search>`.",
         "gold",
     )
 
     if not listings:
-        add_field(embed, "Open Listings", "No active listings right now.", False)
+        add_field(embed, "Open Listings", "No active listings matched your search." if search else "No active listings right now.", False)
     else:
-        for listing in sorted(listings, key=lambda item: int(item.get("id", 0)))[:10]:
+        def listing_sort_key(item):
+            try:
+                return int(str(item.get("id", "0")).split("-")[-1])
+            except Exception:
+                return 0
+
+        for listing in sorted(listings, key=listing_sort_key, reverse=True)[:10]:
             add_field(
                 embed,
-                f"#{listing['id']} — {listing['item']} x{listing['amount']}",
+                f"{listing['id']} — {listing['item']} x{listing['amount']}",
                 f"Seller: <@{listing['seller_id']}>\nPrice: **{fmt_num(listing['price'])} Ryo**\nBuy: `$market buy {listing['id']}`",
                 False,
             )
@@ -4508,12 +4952,20 @@ async def market_sell(ctx, *, args: str = None):
         await send_notice(ctx, "Missing Item", f"You do not have **{item_text} x{amount}** to sell.", "warning")
         return
 
+    state = load_market()
+    market_cfg = CONFIG.get("MARKET", {})
+    max_open = int(market_cfg.get("max_open_listings_per_player", 10))
+    seller_open = [
+        l for l in state.get("listings", {}).values()
+        if l.get("status") == "open" and str(l.get("seller_id")) == seller_id
+    ]
+    if len(seller_open) >= max_open:
+        await send_notice(ctx, "Market Limit Reached", f"You can only have **{max_open}** open listings at once.", "warning")
+        return
+
     remove_item(seller, item_name, amount)
 
-    state = load_market()
-    market_id = str(int(state.get("next_id", 1)))
-    state["next_id"] = int(state.get("next_id", 1)) + 1
-
+    market_id = get_market_listing_id(state)
     listing = {
         "id": market_id,
         "seller_id": seller_id,
@@ -4579,19 +5031,29 @@ async def market_buy(ctx, market_id: str = None):
         await send_notice(ctx, "Not Enough Ryo", f"You need **{fmt_num(price)} Ryo** to buy this item.", "warning")
         return
 
+    market_cfg = CONFIG.get("MARKET", {})
+    tax_percent = float(market_cfg.get("tax_percent", 0.05))
+    tax = int(price * tax_percent)
+    seller_payout = max(0, price - tax)
+
     buyer["ryo"] = int(buyer.get("ryo", 0)) - price
-    seller["ryo"] = int(seller.get("ryo", 0)) + price
+    seller["ryo"] = int(seller.get("ryo", 0)) + seller_payout
     add_item(buyer, listing["item"], int(listing.get("amount", 1)))
 
     listing["status"] = "sold"
     listing["buyer_id"] = buyer_id
     listing["sold_at"] = now_utc().isoformat()
+    listing["tax"] = tax
+    listing["seller_payout"] = seller_payout
+    state.setdefault("history", []).append(dict(listing))
 
     save_players(players)
     save_market(state)
 
     embed = ui_embed("Market Purchase Complete", f"{ctx.author.mention} bought **{listing['item']} x{listing['amount']}** from <@{seller_id}>.", "success")
     add_field(embed, "Price", f"**{fmt_num(price)} Ryo**", True)
+    add_field(embed, "Seller Payout", f"**{fmt_num(seller_payout)} Ryo**", True)
+    add_field(embed, "Market Tax", f"**{fmt_num(tax)} Ryo**", True)
     add_field(embed, "Market ID", f"`{listing['id']}`", True)
     await ctx.send(embed=embed)
 
@@ -4623,9 +5085,41 @@ async def market_cancel(ctx, market_id: str = None):
     listing["status"] = "cancelled"
     listing["cancelled_at"] = now_utc().isoformat()
     listing["cancelled_by"] = seller_id
+    state.setdefault("history", []).append(dict(listing))
     save_market(state)
 
     await send_notice(ctx, "Market Listing Cancelled", f"Returned **{listing['item']} x{listing['amount']}** to <@{return_id}>.", "neutral")
+
+
+@market_command.command(name="mine")
+async def market_mine(ctx):
+    state = load_market()
+    seller_id = str(ctx.author.id)
+    listings = [
+        listing for listing in state.get("listings", {}).values()
+        if str(listing.get("seller_id")) == seller_id and listing.get("status") == "open"
+    ]
+
+    embed = ui_embed("My Market Listings", "Your active market listings.", "gold")
+    if not listings:
+        add_field(embed, "Listings", "You have no active listings.", False)
+    else:
+        for listing in listings[:10]:
+            add_field(embed, f"{listing['id']} — {listing['item']} x{listing['amount']}", f"Price: **{fmt_num(listing['price'])} Ryo**\nCancel: `$market cancel {listing['id']}`", False)
+    await ctx.send(embed=embed)
+
+
+@market_command.command(name="history")
+async def market_history(ctx):
+    state = load_market()
+    history = state.get("history", [])[-10:]
+    embed = ui_embed("Market History", "Last 10 sold/cancelled listings.", "gold")
+    if not history:
+        add_field(embed, "History", "No market history yet.", False)
+    else:
+        for listing in reversed(history):
+            add_field(embed, f"{listing.get('id')} — {listing.get('status', 'unknown').title()}", f"{listing.get('item')} x{listing.get('amount', 1)}\nPrice: **{fmt_num(listing.get('price', 0))} Ryo**", False)
+    await ctx.send(embed=embed)
 
 
 
@@ -5113,10 +5607,84 @@ async def event(ctx):
 
 
 
-@bot.command(name="jutsu", aliases=["Jutsu", "jutsus", "Jutsus"])
-async def jutsu_list(ctx, *, jutsu_name: str = None):
-    if jutsu_name and not jutsu_name.strip().isdigit():
-        await handle_turn_action(ctx, "jutsu", jutsu_name)
+def format_requirements(requirements):
+    if not isinstance(requirements, dict) or not requirements:
+        return "None"
+    hidden_keys = {"hidden", "unlockable"}
+    parts = []
+    for key, value in requirements.items():
+        if key in hidden_keys:
+            continue
+        label = str(key).replace("_", " ").title()
+        parts.append(f"{label}: {value}")
+    return ", ".join(parts) or "None"
+
+
+def format_status_effect(status):
+    if not isinstance(status, dict) or not status:
+        return "None"
+    parts = [str(status.get("type", "effect")).title()]
+    if status.get("chance") is not None:
+        parts.append(f"{status.get('chance')}% chance")
+    if status.get("turns"):
+        parts.append(f"{status.get('turns')} turn(s)")
+    if status.get("damage"):
+        parts.append(f"{status.get('damage')} per turn")
+    if status.get("miss_penalty"):
+        parts.append(f"{int(float(status.get('miss_penalty', 0)) * 100)}% miss penalty")
+    return " • ".join(parts)
+
+
+def find_item_name(search_text):
+    cleaned = str(search_text or "").strip().lower()
+    if not cleaned:
+        return None
+    for name in ITEMS:
+        if name.lower() == cleaned:
+            return name
+    for name in ITEMS:
+        if cleaned in name.lower():
+            return name
+    return None
+
+
+def build_item_info_embed(item_name):
+    data = ITEMS.get(item_name, {})
+    rarity = data.get("rarity", "Unknown")
+    effect = data.get("effect", "Unknown")
+    boost = data.get("boost", 0)
+    description = data.get("description") or "No description configured yet."
+    use_cases = data.get("use_cases") or data.get("use_case") or []
+    if isinstance(use_cases, str):
+        use_cases = [use_cases]
+    if not use_cases:
+        use_cases = [
+            f"Use `$use {item_name}` if the item has a direct stat, skill, bloodline, or utility effect.",
+            f"List it with `$market sell {item_name} <price>` if you want to trade it.",
+            "Keep rare utility items for progression, evolution, or future events."
+        ]
+    embed = ui_embed(f"Item Info — {item_name}", description, "info")
+    add_field(embed, "Rarity", f"**{rarity}**", True)
+    add_field(embed, "Effect", f"**{effect}**", True)
+    add_field(embed, "Boost / Value", f"**{fmt_num(boost)}**", True)
+    add_field(embed, "Use Cases", "\n".join(f"• {line}" for line in use_cases[:6]), False)
+    add_field(embed, "Commands", f"`$use {item_name}` • `$market sell {item_name} <price>` • `$items`", False)
+    return embed
+
+
+@bot.command(name="jutsu", aliases=["Jutsu", "jutsus", "Jutsus", "jutsulist"])
+async def jutsu_list(ctx, *, query: str = None):
+    """Clean jutsu command.
+
+    - During an active duel: `$jutsu <name>` uses that jutsu.
+    - Outside combat: `$jutsu`, `$jutsu 2`, or `$jutsu <search>` opens the jutsu library.
+    """
+    query = str(query or "").strip()
+
+    active_duel_key, active_duel = find_active_duel_for_user(ctx.author.id, ctx.channel.id)
+    active_beast_key, active_beast = find_active_beast_duel_for_user(ctx.author.id, ctx.channel.id)
+    if query and not query.isdigit() and (active_duel or active_beast):
+        await handle_turn_action(ctx, "jutsu", query)
         return
 
     if not JUTSU:
@@ -5124,8 +5692,12 @@ async def jutsu_list(ctx, *, jutsu_name: str = None):
         return
 
     start_page = 1
-    if jutsu_name and jutsu_name.strip().isdigit():
-        start_page = max(1, int(jutsu_name.strip()))
+    search_text = None
+    if query:
+        if query.isdigit():
+            start_page = max(1, int(query))
+        else:
+            search_text = query.lower()
 
     visible_jutsu = []
     for name, data in JUTSU.items():
@@ -5134,55 +5706,58 @@ async def jutsu_list(ctx, *, jutsu_name: str = None):
         requirements = data.get("requirements", {})
         if requirements.get("hidden") or requirements.get("unlockable") is False:
             continue
+        haystack = " ".join([
+            name,
+            data.get("type", ""),
+            data.get("description", ""),
+            str(data.get("scaling", "")),
+            str(requirements.get("chakra_nature", "")),
+            str(requirements.get("clan", "")),
+            str(requirements.get("kekkei_genkai", "")),
+        ]).lower()
+        if search_text and search_text not in haystack:
+            continue
         visible_jutsu.append((name, data))
 
     visible_jutsu.sort(key=lambda item: (
-        item[1].get("requirements", {}).get("level", 1),
-        item[1].get("requirements", {}).get("kekkei_genkai", ""),
-        item[1].get("requirements", {}).get("chakra_nature", ""),
-        item[0]
+        int(item[1].get("requirements", {}).get("level", 1)),
+        int(item[1].get("chakra_cost", 0)),
+        int(item[1].get("base_power", 0)),
+        item[0].lower(),
     ))
 
-    per_page = 4
+    if not visible_jutsu:
+        await send_notice(ctx, "No Jutsu Found", f"No jutsu matched **{query}**.", "warning")
+        return
+
+    per_page = 5
     total_pages = max(1, (len(visible_jutsu) + per_page - 1) // per_page)
     start_page = min(start_page, total_pages)
     pages = []
 
     for page in range(1, total_pages + 1):
         page_items = visible_jutsu[(page - 1) * per_page:page * per_page]
+        title = "Jutsu Library"
+        if search_text:
+            title += f" — Search: {query}"
+        title += f" — Page {page}/{total_pages}"
         embed = ui_embed(
-            f"Jutsu Library — Page {page}/{total_pages}",
-            "Use `$learnjutsu [name]` to learn. In combat, use `$jutsu [name]`. React with ⬅️ ➡️ to move pages.",
+            title,
+            "Outside combat this is a library. During combat, use `$jutsu <name>` to cast. React with ⬅️ ➡️ to page.",
             "brand"
         )
-
         for name, data in page_items:
-            requirements = data.get("requirements", {})
-            req_text = ", ".join(f"{key}: {value}" for key, value in requirements.items()) or "None"
-            status = data.get("status_effect")
-            if isinstance(status, dict):
-                status_text = f"{status.get('type', 'Unknown').title()} • {status.get('chance', 0)}% • {status.get('turns', 1)} turn(s)"
-                if status.get("damage", 0):
-                    status_text += f" • {status.get('damage')} per turn"
-                if status.get("miss_penalty", 0):
-                    status_text += f" • +{int(status.get('miss_penalty', 0) * 100)}% miss penalty"
-            else:
-                status_text = "None"
-
-            add_field(
-                embed,
-                f"{name}",
-                "\n".join([
-                    f"**Type:** {data.get('type', 'Unknown')}  •  **Cost:** {data.get('chakra_cost', 0)} chakra",
-                    f"**Power:** {data.get('base_power', 0)}  •  **Scaling:** {data.get('scaling') or 'None'}",
-                    f"**Status:** {status_text}",
-                    f"**Requires:** {req_text}",
-                    truncate_text(data.get('description', ''), 220),
-                ]),
-                False
-            )
-
-        embed.set_footer(text=f"Showing {len(page_items)} of {len(visible_jutsu)} jutsu • ⬅️ ➡️ to scroll • Laentaru Bot v{BOT_VERSION}")
+            req = data.get("requirements", {})
+            value = "\n".join([
+                f"**Type:** {data.get('type', 'Unknown')} • **Cost:** {fmt_num(data.get('chakra_cost', 0))} chakra • **Base Power:** {fmt_num(data.get('base_power', 0))}",
+                f"**Scaling:** {data.get('scaling') or 'Base only'} / {fmt_num(data.get('scaling_divisor', 0) or 0)}",
+                f"**Status:** {format_status_effect(data.get('status_effect'))}",
+                f"**Requires:** {format_requirements(req)}",
+                truncate_text(data.get('description', ''), 240),
+                f"**Learn:** `$learnjutsu {name}`"
+            ])
+            add_field(embed, name, value, False)
+        embed.set_footer(text=f"{len(visible_jutsu)} visible jutsu • Use $myjutsu for your personal scaling • Laentaru Bot v{BOT_VERSION}")
         pages.append(embed)
 
     await send_paginated_embeds(ctx, pages, start_page - 1)
@@ -5242,21 +5817,52 @@ async def my_jutsu(ctx):
         await send_notice(ctx, "Profile Required", "Use `$start` first to create your shinobi profile.", "warning")
         return
 
-    known = players[user_id].get("known_jutsu", [])
+    player = players[user_id]
+    known = player.get("known_jutsu", [])
     if not known:
         await send_notice(ctx, "No Known Jutsu", "You do not know any jutsu yet. Use `$jutsu` and `$learnjutsu [name]`.", "neutral")
         return
 
-    embed = discord.Embed(title=f"{ctx.author.name}'s Jutsu", color=discord.Color.dark_orange())
+    ranked = []
     for name in known:
         data = JUTSU.get(name, {})
-        embed.add_field(
-            name=name,
-            value=f"**Type:** {data.get('type', 'Unknown')}\n**Chakra Cost:** {data.get('chakra_cost', 0)}\n{data.get('description', '')}",
-            inline=False
-        )
+        if not data:
+            continue
+        power = calculate_jutsu_power(player, data)
+        ranked.append((power, name, data))
 
-    await ctx.send(embed=embed)
+    ranked.sort(key=lambda item: item[0])
+
+    pages = []
+    chunk_size = 8
+    for start in range(0, len(ranked), chunk_size):
+        chunk = ranked[start:start + chunk_size]
+        embed = ui_embed(
+            f"{ctx.author.name}'s Jutsu",
+            "Sorted weakest on top, strongest on bottom based on your current stats.",
+            "purple"
+        )
+        for power, name, data in chunk:
+            req = data.get("requirements", {})
+            effect = data.get("status_effect", {})
+            effect_text = "None"
+            if effect:
+                effect_text = f"{effect.get('type', 'effect').title()} | {effect.get('chance', 0)}% | {effect.get('turns', 0)} turn(s)"
+            add_field(
+                embed,
+                f"{name} — Power {fmt_num(power)}",
+                (
+                    f"**Type:** {data.get('type', 'Unknown')}\n"
+                    f"**Chakra Cost:** {fmt_num(data.get('chakra_cost', 0))}\n"
+                    f"**Scales With:** {data.get('scaling') or 'Base Power'}\n"
+                    f"**Effect:** {effect_text}\n"
+                    f"**Req:** Level {req.get('level', 1)}"
+                ),
+                False
+            )
+        pages.append(embed)
+
+    await send_paginated_embeds(ctx, pages)
 
 
 @bot.command(name="villages")
@@ -5265,24 +5871,42 @@ async def village_list(ctx):
         await send_notice(ctx, "No Villages Configured", "No villages are configured yet.", "warning")
         return
 
-    embed = discord.Embed(
-        title="Villages",
-        description="Use `$joinvillage [name]` to join a village.",
-        color=discord.Color.teal()
-    )
-
-    for name, data in VILLAGES.items():
-        embed.add_field(
-            name=name,
-            value=(
-                f"{data.get('description', 'No description.')}\n"
-                f"**Training XP Bonus:** +{data.get('training_xp_bonus', 0)}\n"
-                f"**Skill Bonus:** +{data.get('skill_bonus', 0)}"
-            ),
-            inline=False
+    state = load_village_state()
+    pages = []
+    entries = list(VILLAGES.items())
+    per_page = 5
+    for start in range(0, len(entries), per_page):
+        chunk = entries[start:start + per_page]
+        page_no = (start // per_page) + 1
+        total_pages = max(1, (len(entries) + per_page - 1) // per_page)
+        embed = ui_embed(
+            f"Villages — Page {page_no}/{total_pages}",
+            "Village levels now appear directly in each village title. Use `$joinvillage <name>` to join.",
+            "info"
         )
-
-    await ctx.send(embed=embed)
+        for name, data in chunk:
+            village_state = state.get("villages", {}).get(name, {})
+            level = int(village_state.get("level", 0))
+            next_req = get_village_level_requirement(min(get_village_max_level(), level + 1)) if level < get_village_max_level() else 0
+            fund_line = f"**Fund:** {fmt_num(village_state.get('fund', 0))} Ryo"
+            if next_req:
+                fund_line += f" / {fmt_num(next_req)} next level"
+            else:
+                fund_line += " | Max level"
+            add_field(
+                embed,
+                f"{name} — Level {level}/{get_village_max_level()}",
+                "\n".join([
+                    data.get('description', 'No description.'),
+                    fund_line,
+                    f"**Skill Bonus:** +{fmt_num(get_total_village_skill_bonus(name))}",
+                    f"**Training XP Bonus:** +{fmt_num(get_total_village_training_bonus(name))}",
+                    f"**War Record:** {fmt_num(village_state.get('war_wins', 0))}W / {fmt_num(village_state.get('war_losses', 0))}L",
+                ]),
+                False
+            )
+        pages.append(embed)
+    await send_paginated_embeds(ctx, pages)
 
 
 @bot.command(name="joinvillage")
@@ -5325,20 +5949,318 @@ async def village_info(ctx):
         await send_notice(ctx, "Profile Required", "Use `$start` first to create your shinobi profile.", "warning")
         return
 
-    village_name = players[user_id].get("village")
+    player = players[user_id]
+    village_name = player.get("village")
     if not village_name:
         await send_notice(ctx, "No Village Joined", "Use `$villages`, then `$joinvillage [name]` to join one.", "warning")
         return
 
+    state = load_village_state()
     data = VILLAGES.get(village_name, {})
+    village_data = state.get("villages", {}).get(village_name, {})
+    level = int(village_data.get("level", 0))
+    next_level = min(get_village_max_level(), level + 1)
+    next_req = get_village_level_requirement(next_level) if level < get_village_max_level() else 0
     members = [p for p in players.values() if p.get("village") == village_name]
     total_power = sum(calculate_hidden_skill_score(p) for p in members)
 
-    embed = discord.Embed(title=village_name, description=data.get("description", ""), color=discord.Color.teal())
-    embed.add_field(name="Members", value=str(len(members)), inline=True)
-    embed.add_field(name="Total Power", value=str(total_power), inline=True)
-    embed.add_field(name="Training XP Bonus", value=f"+{data.get('training_xp_bonus', 0)}", inline=True)
+    player["village_rank"] = get_village_rank_name(player.get("village_donated", 0))
+    save_players(players)
+
+    embed = ui_embed(f"{village_name} — Level {level}/{get_village_max_level()}", data.get("description", ""), "teal")
+    add_field(embed, "Village Level", f"**{level}/{get_village_max_level()}**", True)
+    add_field(embed, "Members", f"**{len(members)}**", True)
+    add_field(embed, "Total Power", f"**{fmt_num(total_power)}**", True)
+    add_field(embed, "Fund", f"**{fmt_num(village_data.get('fund', 0))} Ryo**" + (f" / {fmt_num(next_req)} for next level" if next_req else " | Max level reached"), False)
+    add_field(embed, "Bonuses", f"**Skill Bonus:** +{fmt_num(get_total_village_skill_bonus(village_name))}\n**Training XP Bonus:** +{fmt_num(get_total_village_training_bonus(village_name))}\n**War Wins:** {fmt_num(village_data.get('war_wins', 0))}", False)
+    add_field(embed, "Your Village Rank", f"**{player.get('village_rank')}** | Donated **{fmt_num(player.get('village_donated', 0))} Ryo**", False)
+    add_field(embed, "Commands", "`$villagedonate [amount]` • `$villageleaderboard` • `$villagewar [enemy village]` • `$warvote yes/no`", False)
     await ctx.send(embed=embed)
+
+
+@bot.command(name="villagedonate", aliases=["vdonate", "donatevillage"])
+async def village_donate(ctx, amount: int):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+
+    player = players[user_id]
+    village_name = player.get("village")
+    if not village_name:
+        await send_notice(ctx, "No Village Joined", "Join a village before donating.", "warning")
+        return
+
+    if amount <= 0:
+        await send_notice(ctx, "Invalid Amount", "Donation amount must be greater than 0.", "warning")
+        return
+
+    if int(player.get("ryo", 0)) < amount:
+        await send_notice(ctx, "Not Enough Ryo", f"You only have **{fmt_num(player.get('ryo', 0))} Ryo**.", "warning")
+        return
+
+    state = load_village_state()
+    village_data = state["villages"][village_name]
+    player["ryo"] = int(player.get("ryo", 0)) - amount
+    player["village_donated"] = int(player.get("village_donated", 0)) + amount
+    player["village_rank"] = get_village_rank_name(player["village_donated"])
+    village_data["fund"] = int(village_data.get("fund", 0)) + amount
+    village_data["total_donated"] = int(village_data.get("total_donated", 0)) + amount
+    village_data.setdefault("donors", {})
+    village_data["donors"][user_id] = int(village_data["donors"].get(user_id, 0)) + amount
+
+    leveled = process_village_level_ups(village_data)
+    player["hidden_skill_score"] = calculate_hidden_skill_score(player)
+
+    save_village_state(state)
+    save_players(players)
+
+    message = f"{ctx.author.mention} donated **{fmt_num(amount)} Ryo** to **{village_name}**."
+    if leveled:
+        message += f"\n**Village Level Up:** +{leveled} level(s). Now level **{village_data['level']}**."
+    message += f"\n**Your Village Rank:** {player['village_rank']}"
+    await send_notice(ctx, "Village Donation Complete", message, "success")
+
+
+@bot.command(name="villagewar", aliases=["declarewar"])
+async def village_war(ctx, *, enemy_village: str):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+
+    if user_id not in players or not players[user_id].get("village"):
+        await send_notice(ctx, "Village Required", "You must belong to a village to start a war vote.", "warning")
+        return
+
+    attacker = players[user_id]["village"]
+    defender = None
+    for name in VILLAGES:
+        if name.lower() == enemy_village.lower() or enemy_village.lower() in name.lower():
+            defender = name
+            break
+
+    if not defender:
+        await send_notice(ctx, "Village Not Found", "That target village does not exist.", "warning")
+        return
+
+    if defender == attacker:
+        await send_notice(ctx, "Invalid War", "Your village cannot declare war on itself.", "warning")
+        return
+
+    if attacker in ACTIVE_WAR_VOTES:
+        await send_notice(ctx, "Vote Already Active", "Your village already has an active war vote.", "warning")
+        return
+
+    cfg = get_village_expansion_config()
+    ACTIVE_WAR_VOTES[attacker] = {
+        "attacker": attacker,
+        "defender": defender,
+        "started_by": user_id,
+        "channel_id": ctx.channel.id,
+        "yes": [user_id],
+        "no": [],
+        "created_at": now_utc().isoformat()
+    }
+
+    embed = ui_embed("Village War Vote Started", f"**{attacker}** wants to declare war on **{defender}**.", "danger")
+    add_field(embed, "How To Vote", "`$warvote yes` or `$warvote no`", False)
+    add_field(embed, "Votes Needed", f"Majority of active voting members. Minimum yes votes: **{cfg.get('war_min_yes_votes', 2)}**", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="warvote")
+async def war_vote(ctx, vote: str):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+
+    if user_id not in players or not players[user_id].get("village"):
+        await send_notice(ctx, "Village Required", "You must belong to a village to vote.", "warning")
+        return
+
+    village_name = players[user_id]["village"]
+    vote_data = ACTIVE_WAR_VOTES.get(village_name)
+    if not vote_data:
+        await send_notice(ctx, "No War Vote", "Your village does not have an active war vote.", "neutral")
+        return
+
+    vote = vote.lower().strip()
+    if vote not in ["yes", "no"]:
+        await send_notice(ctx, "Invalid Vote", "Use `$warvote yes` or `$warvote no`.", "warning")
+        return
+
+    vote_data["yes"] = [v for v in vote_data.get("yes", []) if v != user_id]
+    vote_data["no"] = [v for v in vote_data.get("no", []) if v != user_id]
+    vote_data[vote].append(user_id)
+
+    members = [uid for uid, p in players.items() if p.get("village") == village_name]
+    yes_count = len(vote_data["yes"])
+    no_count = len(vote_data["no"])
+    cfg = get_village_expansion_config()
+    min_yes = int(cfg.get("war_min_yes_votes", 2))
+    required = max(min_yes, (len(members) // 2) + 1)
+
+    if yes_count >= required:
+        await resolve_village_war(ctx, vote_data, players)
+        return
+
+    if no_count >= required:
+        del ACTIVE_WAR_VOTES[village_name]
+        await send_notice(ctx, "Village War Rejected", f"**{village_name}** rejected the war vote.", "neutral")
+        return
+
+    await send_notice(ctx, "Vote Counted", f"**{village_name} vs {vote_data['defender']}**\nYes: **{yes_count}/{required}** | No: **{no_count}/{required}**", "info")
+
+
+async def resolve_village_war(ctx, vote_data, players):
+    """A passed vote now starts a 24-hour score war instead of instantly rolling a winner."""
+    attacker = vote_data["attacker"]
+    defender = vote_data["defender"]
+    state = load_village_state()
+
+    if find_active_war_between(state, attacker, defender):
+        if attacker in ACTIVE_WAR_VOTES:
+            del ACTIVE_WAR_VOTES[attacker]
+        await send_notice(ctx, "War Already Active", f"**{attacker}** and **{defender}** are already at war.", "warning")
+        return
+
+    duration_hours = get_war_duration_hours()
+    started_at = now_utc()
+    ends_at = started_at + timedelta(hours=duration_hours)
+    war = {
+        "id": f"WAR-{int(started_at.timestamp())}",
+        "status": "active",
+        "attacker": attacker,
+        "defender": defender,
+        "started_by": vote_data.get("started_by"),
+        "channel_id": ctx.channel.id,
+        "started_at": started_at.isoformat(),
+        "ends_at": ends_at.isoformat(),
+        "score": {attacker: 0, defender: 0},
+        "participants": {attacker: [], defender: []},
+        "duels": [],
+    }
+    state.setdefault("wars", []).append(war)
+    save_village_state(state)
+
+    if attacker in ACTIVE_WAR_VOTES:
+        del ACTIVE_WAR_VOTES[attacker]
+
+    embed = ui_embed("Village War Started", f"**{attacker}** is now at war with **{defender}** for **{duration_hours} hours**.", "danger")
+    add_field(embed, "How To Score", f"Members of **{attacker}** must duel members of **{defender}**. Every completed duel win gives that village **+1 war point**.", False)
+    add_field(embed, "Current Score", build_war_status_text(war), False)
+    add_field(embed, "Victory Rewards", f"Winning fighters: **{fmt_num(get_war_player_reward())} Ryo each**\nWinning village fund: **+{fmt_num(get_war_village_fund_reward())} Ryo**", False)
+    add_field(embed, "Commands", "`$warstatus` — view active wars\n`$duel @player` — fight an enemy village member", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="warstatus", aliases=["villagewars", "wars"])
+async def war_status(ctx):
+    await check_and_announce_due_village_wars(ctx.channel)
+    state = load_village_state()
+    active = get_active_village_wars(state)
+    if not active:
+        await send_notice(ctx, "No Active Village Wars", "There are no active village wars right now.", "neutral")
+        return
+    embed = ui_embed("Active Village Wars", "Village wars last 24 hours. Duel enemy village members to score points.", "danger")
+    for war in active[:10]:
+        add_field(embed, f"{war.get('attacker')} vs {war.get('defender')}", build_war_status_text(war), False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="resolvewars", aliases=["warresolve"])
+async def resolve_wars_command(ctx):
+    resolved = await check_and_announce_due_village_wars(ctx.channel)
+    if not resolved:
+        await send_notice(ctx, "No Wars Ready", "No active village war has reached its 24-hour end time yet.", "neutral")
+
+
+
+@bot.command(name="bounty")
+async def bounty(ctx, member: discord.Member = None, amount: int = None):
+    state = load_bounties()
+    open_bounties = [b for b in state.get("bounties", {}).values() if b.get("status") == "open"]
+
+    if member is None:
+        embed = ui_embed("Player Bounties", "Use `$bounty @player [amount]` to place a bounty. Use `$claimbounty @player` after defeating them.", "danger")
+        if not open_bounties:
+            add_field(embed, "Open Bounties", "No active bounties.", False)
+        else:
+            for bounty_data in sorted(open_bounties, key=lambda b: b.get("amount", 0), reverse=True)[:10]:
+                add_field(embed, bounty_data["id"], f"Target: <@{bounty_data['target_id']}>\nReward: **{fmt_num(bounty_data['amount'])} Ryo**\nPlaced by: <@{bounty_data['placed_by']}>", False)
+        await ctx.send(embed=embed)
+        return
+
+    if amount is None or amount <= 0:
+        await send_notice(ctx, "Invalid Bounty", "Use `$bounty @player [amount]`.", "warning")
+        return
+
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    target_id = str(member.id)
+
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+
+    if target_id not in players:
+        await send_notice(ctx, "Target Missing", "That player does not have a profile.", "warning")
+        return
+
+    if user_id == target_id:
+        await send_notice(ctx, "Invalid Target", "You cannot place a bounty on yourself.", "warning")
+        return
+
+    if int(players[user_id].get("ryo", 0)) < amount:
+        await send_notice(ctx, "Not Enough Ryo", f"You only have **{fmt_num(players[user_id].get('ryo', 0))} Ryo**.", "warning")
+        return
+
+    players[user_id]["ryo"] = int(players[user_id].get("ryo", 0)) - amount
+    bounty_id = get_bounty_id(state)
+    state["bounties"][bounty_id] = {
+        "id": bounty_id,
+        "target_id": target_id,
+        "placed_by": user_id,
+        "amount": amount,
+        "status": "open",
+        "created_at": now_utc().isoformat()
+    }
+    save_players(players)
+    save_bounties(state)
+    await send_notice(ctx, "Bounty Posted", f"**{fmt_num(amount)} Ryo** bounty placed on {member.mention}.", "danger")
+
+
+@bot.command(name="claimbounty")
+async def claim_bounty(ctx, member: discord.Member):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    target_id = str(member.id)
+    state = load_bounties()
+
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+
+    matches = [b for b in state.get("bounties", {}).values() if b.get("target_id") == target_id and b.get("status") == "open"]
+    if not matches:
+        await send_notice(ctx, "No Bounty", "That player does not have an open bounty.", "neutral")
+        return
+
+    # Anti-abuse: claim requires you to have won a duel against target at least once after bounty placement if duel history is not tracked.
+    # Since this bot currently has no persistent duel-history ledger, this claim is manual-trust based.
+    total = sum(int(b.get("amount", 0)) for b in matches)
+    for b in matches:
+        b["status"] = "claimed"
+        b["claimed_by"] = user_id
+        b["claimed_at"] = now_utc().isoformat()
+        state.setdefault("history", []).append(b)
+
+    players[user_id]["ryo"] = int(players[user_id].get("ryo", 0)) + total
+    players[user_id]["bounty_wins"] = int(players[user_id].get("bounty_wins", 0)) + len(matches)
+    players[user_id]["bounty_claimed_ryo"] = int(players[user_id].get("bounty_claimed_ryo", 0)) + total
+    save_players(players)
+    save_bounties(state)
+    await send_notice(ctx, "Bounty Claimed", f"{ctx.author.mention} claimed **{fmt_num(total)} Ryo** from bounties on {member.mention}.", "success")
 
 
 @bot.command(name="villageleaderboard", aliases=["vleaderboard", "villageladder"])
@@ -6188,6 +7110,18 @@ async def items_command(ctx):
     await ctx.send(embed=embed)
 
 
+@bot.command(name="iteminfo", aliases=["item", "inspectitem"])
+async def item_info(ctx, *, item_name: str = None):
+    if not item_name:
+        await send_notice(ctx, "Item Required", "Usage: `$iteminfo <item name>`", "warning")
+        return
+    matched = find_item_name(item_name)
+    if not matched:
+        await send_notice(ctx, "Item Not Found", "That item does not exist. Use `$items` to view the registry.", "warning")
+        return
+    await ctx.send(embed=build_item_info_embed(matched))
+
+
 @bot.command(name="events")
 async def events_command(ctx):
     if ACTIVE_EVENT is None:
@@ -6460,16 +7394,41 @@ async def mission_command(ctx, *, mission_name: str = None):
 
 @bot.command(name="help")
 async def help_command(ctx):
-    embed = ui_embed("Laentaru Bot Help", "Compact command menu for v1.9.0.", "brand")
-    add_field(embed, "Start", "`$start` • `$roll` • `$reroll` • `$profile` • `$build` • `$stats`", False)
-    add_field(embed, "Combat", "`$duel @user` • `$accept` • `$attack` • `$heavy` • `$taijutsu` • `$defend` • `$genjutsu` • `$jutsu <name>`", False)
-    add_field(embed, "Progression", "`$train` • `$missions` • `$mission <name>` • `$daily` • `$weekly` • `$streak` • `$inventory` • `$trade` • `$market`", False)
-    add_field(embed, "World", "`$event` • `$events` • `$lottery` • `$ticket [amount]` • `$tournament` • `$jointournament` • `$ladder` • `$villages`", False)
-    add_field(embed, "Trading", "`$trade @user ryo 100` • `$trade @user item 1 Kunai` • `$market sell Kunai 100` • `$market buy <ID>`", False)
-    add_field(embed, "Gacha", "`$banner` • `$gacha` • `$summon` • `$summon multi` • `$pull` • `$wish` • `$rarities`", False)
-    add_field(embed, "Content", "`$clans` • `$kekkei` • `$dojutsu` • `$items` • `$evolutions` • `$evolve`", False)
-    embed.set_footer(text=f"Laentaru Bot v{BOT_VERSION} • Use $info for system overview")
-    await ctx.send(embed=embed)
+    pages = []
+
+    page = ui_embed("Laentaru Help — Start & Profile", "Public commands only. Developer commands and private commands are hidden.", "brand")
+    add_field(page, "Start", "`$start` — create profile\n`$roll` — roll clan, stats, natures, bloodline\n`$reroll` — reroll if you have rerolls left\n`$profile [user]` — view your/another profile", False)
+    add_field(page, "Build Info", "`$compare @user` — compare builds\n`$build` — strengths/weaknesses\n`$stats` — combat formulas\n`$rank` — your rank card\n`$ladder` — public leaderboard\n`$balance` — ryo balance", False)
+    pages.append(page)
+
+    page = ui_embed("Laentaru Help — Progression", "Train, earn, collect, and grow your shinobi.", "success")
+    add_field(page, "Training & Rewards", "`$train [stat]` — train generally or focus a stat\n`$cooldowns` — view timers\n`$daily` — claim daily reward\n`$weekly` — claim weekly reward\n`$streak` — view streaks\n`$missions` — mission board\n`$mission <name>` — run a mission", False)
+    add_field(page, "Inventory", "`$inventory` — view items\n`$items` — item registry\n`$iteminfo <item>` — item description/use cases\n`$use <item> [qty]` — use item(s)", False)
+    pages.append(page)
+
+    page = ui_embed("Laentaru Help — Combat & Jutsu", "Turn-based PvP and jutsu commands.", "danger")
+    add_field(page, "Dueling", "`$duel @user` — challenge player\n`$accept` / `$deny` — respond to duel\n`$attack` — basic attack\n`$heavy` — stronger, less accurate hit\n`$taijutsu` — combo attack\n`$defend` — reduce incoming damage\n`$genjutsu` — accuracy pressure\n`$transformation` — stun risk/reward\n`$forfeit` — surrender", False)
+    add_field(page, "Jutsu", "`$jutsu` — clean jutsu library\n`$jutsu <page/search>` — page/search library outside combat\n`$jutsu <name>` — cast during combat\n`$learnjutsu <name>` — learn eligible jutsu\n`$myjutsu` — your known jutsu sorted weakest to strongest", False)
+    pages.append(page)
+
+    page = ui_embed("Laentaru Help — Villages & World", "Village expansion, wars, bounties, and events.", "purple")
+    add_field(page, "Villages", "`$villages` — village list with levels\n`$joinvillage <name>` — join village\n`$village` — your village level/fund/rank\n`$villagedonate <amount>` — donate to village fund\n`$villageleaderboard` — village rankings\n`$villagewar <enemy>` — propose war vote\n`$warvote yes/no` — vote on war\n`$warstatus` — view 24-hour war scoreboards", False)
+    add_field(page, "World", "`$event` — join active event\n`$events` — active event status\n`$bounty @user <amount>` — place bounty\n`$claimbounty @user` — claim bounty after defeating target\n`$lottery` — lottery status\n`$ticket [amount]` — buy tickets", False)
+    pages.append(page)
+
+    page = ui_embed("Laentaru Help — Economy & Trading", "Player trading, market, and summons.", "gold")
+    add_field(page, "Trading", "`$trade @user ryo <amount>` — offer ryo trade\n`$trade @user item <qty> <item>` — offer item trade\n`$accepttrade` / `$denytrade` / `$canceltrade` — manage trades", False)
+    add_field(page, "Market", "`$market` — browse listings\n`$market <search>` — search listings\n`$market sell <item> <price> [amount]` — list item\n`$market buy <ID>` — buy listing\n`$market cancel <ID>` — cancel listing\n`$market mine` — your listings\n`$market history` — recent sales/cancels", False)
+    add_field(page, "Gacha", "`$gacha` — summon info\n`$banner` — current banner\n`$rarities` — pull rates\n`$summon` / `$summon multi` — pull rewards", False)
+    pages.append(page)
+
+    page = ui_embed("Laentaru Help — Content Guides", "Registries and explanation commands.", "info")
+    add_field(page, "Content", "`$clans` — clan registry\n`$kekkei` — bloodline/dojutsu list\n`$evolutions [bloodline]` — evolution path\n`$evolve [bloodline]` — evolve bloodline\n`$info` — system overview\n`$tournament` — tournament status\n`$jointournament` — join active tournament", False)
+    add_field(page, "Paging", "Use the emoji reactions under this message: ⬅️ previous, ➡️ next, ⏹️ stop.", False)
+    pages.append(page)
+
+    await send_paginated_embeds(ctx, pages)
+
 
 @bot.command(name="info")
 async def info(ctx):
@@ -6622,10 +7581,14 @@ async def devreset(ctx):
         await send_notice(ctx, "Developer Only", "You do not have permission to use this command.", "danger")
         return
 
-    with open(DATA_FILE, "w") as file:
+    with open(DATA_FILE, "w", encoding="utf-8") as file:
         json.dump({}, file, indent=4)
 
-    await send_notice(ctx, "World Reset Complete", "All player data has been reset.", "danger")
+    save_market({"next_id": 1, "listings": {}, "history": []})
+    save_village_state(get_default_village_state())
+    save_bounties({"next_id": 1, "bounties": {}, "history": []})
+
+    await send_notice(ctx, "World Reset Complete", "All player data, inventories, market listings, village funds/levels, wars, and bounties have been reset.", "danger")
 
 
 @bot.command(name="devshowskill")
