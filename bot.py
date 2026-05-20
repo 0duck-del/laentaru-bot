@@ -5346,6 +5346,37 @@ async def use_item(ctx, *, item_input: str = None):
         player["market_fee_waivers"] = int(player.get("market_fee_waivers", 0)) + waiver_gain
         effect_text = f"+{fmt_num(waiver_gain)} market fee waiver(s)"
 
+    elif effect == "Village Donation Boost":
+        village_name = player.get("village")
+        if not village_name:
+            await send_notice(ctx, "No Village Joined", "Join a village before using village donation items.", "warning")
+            return
+
+        state = load_village_state()
+        village_data = state.get("villages", {}).get(village_name)
+        if not village_data:
+            await send_notice(ctx, "Village Missing", f"**{village_name}** could not be found in village data.", "warning")
+            return
+
+        donation_value = max(1, boost) * quantity
+        village_data["fund"] = int(village_data.get("fund", 0)) + donation_value
+        village_data["total_donated"] = int(village_data.get("total_donated", 0)) + donation_value
+        village_data.setdefault("donors", {})
+        village_data["donors"][user_id] = int(village_data["donors"].get(user_id, 0)) + donation_value
+
+        player["village_donated"] = int(player.get("village_donated", 0)) + donation_value
+        player["village_rank"] = get_village_rank_name(player["village_donated"])
+
+        leveled = process_village_level_ups(village_data)
+        save_village_state(state)
+
+        effect_text = (
+            f"+{fmt_num(donation_value)} Ryo value donated to **{village_name}**"
+            f"\n**Your Village Rank:** {player['village_rank']}"
+        )
+        if leveled:
+            effect_text += f"\n**Village Level Up:** +{leveled} level(s). Now level **{village_data['level']}**."
+
     else:
         await send_notice(ctx, "Item Effect Not Supported", f"**{matched_item}** uses effect `{effect}`, but that effect is not supported yet.", "warning")
         return
@@ -5366,6 +5397,8 @@ async def use_item(ctx, *, item_input: str = None):
     add_field(embed, "Remaining", f"{fmt_num(remaining_qty)}x {matched_item}", True)
     if effect == "Rerolls":
         add_field(embed, "Rerolls Remaining", fmt_num(player.get("rerolls_remaining", 0)), True)
+    if effect == "Village Donation Boost":
+        add_field(embed, "Village Donations", f"Total donated: **{fmt_num(player.get('village_donated', 0))} Ryo**", True)
     await ctx.send(embed=embed)
 
 
