@@ -801,11 +801,11 @@
             "rarity": "Rare",
             "effect": "Village Donation Boost",
             "boost": 500,
-            "description": "A crate of supplies that can be sold, traded, or saved for village-focused events.",
+            "description": "A crate of supplies that donates its value directly into your village fund when used.",
             "use_cases": [
-                "Good market item for village economy players.",
-                "Can be used as a roleplay reward for war/event participation.",
-                "Future-ready for village fund bonuses."
+                "Use it to donate 500 Ryo value to your village fund without spending personal Ryo.",
+                "Counts toward your personal village donation total and village rank.",
+                "Can trigger village level-ups if the fund reaches the next requirement."
             ]
         },
         "Kage Medal": {
