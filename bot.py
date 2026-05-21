@@ -4175,6 +4175,54 @@ def resolve_player_record(players, member):
 
 
 
+
+
+def get_bloodline_stage_text(player, bloodline):
+    """Returns a safe readable evolution/stage label for one owned bloodline."""
+    if not bloodline:
+        return None
+    if "get_kekkei_stage_name" not in globals():
+        return None
+    try:
+        stage = get_kekkei_stage_name(player, bloodline)
+    except TypeError:
+        try:
+            stage = get_kekkei_stage_name(player)
+        except Exception:
+            return None
+    except Exception:
+        return None
+    if not stage or str(stage).lower() == str(bloodline).lower():
+        return None
+    return str(stage)
+
+
+def format_bloodline_summary(player, limit=5):
+    """Compact one-line bloodline summary for the main profile card."""
+    bloodlines = get_player_bloodlines(player)
+    if not bloodlines:
+        return "None"
+    shown = []
+    for bloodline in bloodlines[:limit]:
+        stage = get_bloodline_stage_text(player, bloodline)
+        shown.append(f"{bloodline}" + (f" ({stage})" if stage else ""))
+    if len(bloodlines) > limit:
+        shown.append(f"+{len(bloodlines) - limit} more")
+    return f"{len(bloodlines)} owned | " + ", ".join(shown)
+
+
+def format_bloodline_page(player, start=0, limit=10):
+    """Readable multiline bloodline list used on extra profile pages."""
+    bloodlines = get_player_bloodlines(player)
+    if not bloodlines:
+        return "None"
+    lines = []
+    for index, bloodline in enumerate(bloodlines[start:start + limit], start=start + 1):
+        stage = get_bloodline_stage_text(player, bloodline)
+        stage_text = f" — {stage}" if stage else ""
+        lines.append(f"`{index:02}` **{bloodline}**{stage_text}")
+    return "\n".join(lines) if lines else "None"
+
 def format_chakra_nature_profile(player):
     """Readable chakra nature block for profile/progression embeds."""
     natures = player.get("chakra_natures", []) or []
@@ -4457,6 +4505,7 @@ async def profile(ctx, member: discord.Member = None):
             kv_line("Rank", player.get("rank", "Academy Student")),
             kv_line("Clan", player.get("clan") or "Not rolled"),
             kv_line("Village", player.get("village") or "None"),
+            kv_line("Chakra Natures", compact_list(player.get("chakra_natures", []), "Not rolled", 7)),
             kv_line("Ryo", fmt_num(player.get("ryo", 0))),
         ]), False)
         add_field(embed, "Kekkei", format_player_bloodlines(player), False)
