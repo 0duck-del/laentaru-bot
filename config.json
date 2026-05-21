@@ -987,9 +987,9 @@
         },
         "Iron Ore": {
             "rarity": "Common",
-            "effect": "Material",
+            "effect": "Crafting Material",
             "boost": 1,
-            "description": "Crafting/profession material."
+            "description": "Raw ore used in weapon and armor crafting."
         },
         "Medicinal Herbs": {
             "rarity": "Common",
@@ -1014,6 +1014,42 @@
             "effect": "Material",
             "boost": 1,
             "description": "Crafting/profession material."
+        },
+        "Leather": {
+            "rarity": "Common",
+            "effect": "Crafting Material",
+            "boost": 1,
+            "description": "Basic leather used in masks, armor, and wraps."
+        },
+        "Chakra Ore": {
+            "rarity": "Uncommon",
+            "effect": "Crafting Material",
+            "boost": 1,
+            "description": "Ore carrying faint chakra residue, used for chakra-based recipes."
+        },
+        "Scroll Ink": {
+            "rarity": "Uncommon",
+            "effect": "Crafting Material",
+            "boost": 1,
+            "description": "Ink used for seals, scrolls, and chakra-control recipes."
+        },
+        "Forged Steel": {
+            "rarity": "Rare",
+            "effect": "Crafting Material",
+            "boost": 1,
+            "description": "Refined steel used for stronger gear recipes."
+        },
+        "Medicinal Herb": {
+            "rarity": "Common",
+            "effect": "Crafting Material",
+            "boost": 1,
+            "description": "Herb used in medical and support crafting."
+        },
+        "Ancient Relic Dust": {
+            "rarity": "Epic",
+            "effect": "Crafting Material",
+            "boost": 1,
+            "description": "Rare dust from old relics, used in endgame crafting."
         }
     },
     "ITEM_DROP_TABLE": [
@@ -2446,7 +2482,7 @@
             }
         }
     },
-    "BOT_VERSION": "3.3.0-deep-mmorpg",
+    "BOT_VERSION": "3.4.0-chakra-crafting",
     "REROLLS_PER_PLAYER": 10,
     "TOURNAMENT": {
         "min_win_chance": 0.18,
@@ -4742,49 +4778,91 @@
             "miner": {
                 "name": "Miner",
                 "resource": "Iron Ore",
+                "resource_min": 1,
+                "resource_max": 3,
                 "xp_min": 5,
                 "xp_max": 12,
                 "ryo_min": 5,
                 "ryo_max": 14,
                 "items": [
-                    "Armor Plating",
+                    "Chakra Ore",
+                    "Forged Steel",
                     "Chakra Forge Ember"
                 ]
             },
             "herbalist": {
                 "name": "Herbalist",
                 "resource": "Medicinal Herb",
+                "resource_min": 1,
+                "resource_max": 3,
                 "xp_min": 5,
                 "xp_max": 12,
                 "ryo_min": 5,
                 "ryo_max": 14,
                 "items": [
                     "Medical Kit",
-                    "Bandage Wrap"
+                    "Bandage Wrap",
+                    "Leather"
                 ]
             },
             "scribe": {
                 "name": "Scribe",
                 "resource": "Scroll Ink",
+                "resource_min": 1,
+                "resource_max": 3,
                 "xp_min": 6,
                 "xp_max": 14,
                 "ryo_min": 6,
                 "ryo_max": 16,
                 "items": [
                     "Scroll Fragment",
-                    "Jutsu Archive Scroll"
+                    "Jutsu Archive Scroll",
+                    "Chakra Ore"
                 ]
             },
             "smith": {
                 "name": "Smith",
                 "resource": "Forged Steel",
+                "resource_min": 1,
+                "resource_max": 2,
                 "xp_min": 6,
                 "xp_max": 14,
                 "ryo_min": 6,
                 "ryo_max": 16,
                 "items": [
                     "Academy Kunai",
-                    "Jonin Flak Jacket"
+                    "Jonin Flak Jacket",
+                    "Iron Ore"
+                ]
+            },
+            "tailor": {
+                "name": "Tailor",
+                "resource": "Leather",
+                "resource_min": 1,
+                "resource_max": 3,
+                "xp_min": 5,
+                "xp_max": 12,
+                "ryo_min": 5,
+                "ryo_max": 14,
+                "items": [
+                    "ANBU Mask",
+                    "Hyuga Hand Wraps",
+                    "Sealing Ring"
+                ]
+            },
+            "relic_hunter": {
+                "name": "Relic Hunter",
+                "resource": "Ancient Relic Dust",
+                "resource_min": 1,
+                "resource_max": 1,
+                "xp_min": 8,
+                "xp_max": 18,
+                "ryo_min": 10,
+                "ryo_max": 24,
+                "items": [
+                    "Ancient Kekkei Relic",
+                    "Six Paths Fragment",
+                    "Forbidden Scroll Core"
                 ]
             }
         }
@@ -4977,5 +5055,131 @@
             "Kage Candidate",
             "Legendary Shinobi"
         ]
+    },
+    "CRAFTING": {
+        "enabled": true,
+        "craft_xp_per_recipe": 18,
+        "material_names": [
+            "Iron Ore",
+            "Leather",
+            "Chakra Ore",
+            "Scroll Ink",
+            "Forged Steel",
+            "Medicinal Herb",
+            "Ancient Relic Dust"
+        ],
+        "recipes": {
+            "academy_kunai": {
+                "name": "Academy Kunai",
+                "description": "Starter weapon gear for early shinobi builds.",
+                "output": "Academy Kunai",
+                "amount": 1,
+                "ryo_cost": 75,
+                "level_required": 1,
+                "materials": {
+                    "Iron Ore": 2,
+                    "Leather": 1
+                }
+            },
+            "chakra_battery": {
+                "name": "Chakra Battery",
+                "description": "Reserve booster for jutsu-heavy builds.",
+                "output": "Chakra Battery",
+                "amount": 1,
+                "ryo_cost": 125,
+                "level_required": 3,
+                "materials": {
+                    "Chakra Ore": 2,
+                    "Scroll Ink": 1
+                }
+            },
+            "stamina_seal": {
+                "name": "Stamina Seal",
+                "description": "Crafted seal for endurance builds.",
+                "output": "Stamina Seal",
+                "amount": 1,
+                "ryo_cost": 125,
+                "level_required": 3,
+                "materials": {
+                    "Iron Ore": 1,
+                    "Scroll Ink": 2
+                }
+            },
+            "armor_plating": {
+                "name": "Armor Plating",
+                "description": "Defensive plating used by tankier shinobi.",
+                "output": "Armor Plating",
+                "amount": 1,
+                "ryo_cost": 140,
+                "level_required": 5,
+                "materials": {
+                    "Iron Ore": 3,
+                    "Forged Steel": 1
+                }
+            },
+            "precision_senbon": {
+                "name": "Precision Senbon",
+                "description": "Accuracy-focused crafted weapon set.",
+                "output": "Precision Senbon",
+                "amount": 1,
+                "ryo_cost": 160,
+                "level_required": 6,
+                "materials": {
+                    "Iron Ore": 2,
+                    "Chakra Ore": 1
+                }
+            },
+            "chakra_control_seal": {
+                "name": "Chakra Control Seal",
+                "description": "Refined seal for improving chakra control.",
+                "output": "Chakra Control Seal",
+                "amount": 1,
+                "ryo_cost": 225,
+                "level_required": 8,
+                "materials": {
+                    "Scroll Ink": 3,
+                    "Chakra Ore": 1
+                }
+            },
+            "anbu_mask": {
+                "name": "ANBU Mask",
+                "description": "Advanced headgear with assassination-style passives.",
+                "output": "ANBU Mask",
+                "amount": 1,
+                "ryo_cost": 500,
+                "level_required": 15,
+                "materials": {
+                    "Forged Steel": 2,
+                    "Leather": 2,
+                    "Scroll Ink": 1
+                }
+            },
+            "jonin_flak_jacket": {
+                "name": "Jonin Flak Jacket",
+                "description": "Reliable defensive chest gear.",
+                "output": "Jonin Flak Jacket",
+                "amount": 1,
+                "ryo_cost": 650,
+                "level_required": 18,
+                "materials": {
+                    "Forged Steel": 3,
+                    "Leather": 3,
+                    "Chakra Ore": 1
+                }
+            },
+            "forbidden_scroll_core": {
+                "name": "Forbidden Scroll Core",
+                "description": "Endgame component for dangerous scroll builds.",
+                "output": "Forbidden Scroll Core",
+                "amount": 1,
+                "ryo_cost": 1200,
+                "level_required": 25,
+                "materials": {
+                    "Scroll Ink": 5,
+                    "Chakra Ore": 4,
+                    "Ancient Relic Dust": 1
+                }
+            }
+        }
     }
 }
