@@ -1228,6 +1228,55 @@ def format_player_bloodlines(player, limit=8):
         parts.append(f"+{len(bloodlines) - limit} more")
     return ", ".join(parts)
 
+def get_bloodline_stage_text(player, bloodline):
+    """Returns a readable evolution/stage label for one owned bloodline."""
+    if not bloodline:
+        return None
+    if "get_kekkei_stage_name" not in globals():
+        return None
+    try:
+        stage = get_kekkei_stage_name(player, bloodline)
+    except TypeError:
+        stage = get_kekkei_stage_name(player)
+    except Exception:
+        return None
+    if not stage or str(stage).lower() == str(bloodline).lower():
+        return None
+    return str(stage)
+
+
+def format_bloodline_summary(player, limit=6):
+    """Compact one-line summary for the main profile card."""
+    bloodlines = get_player_bloodlines(player)
+    if not bloodlines:
+        return "None"
+
+    shown = []
+    for bloodline in bloodlines[:limit]:
+        stage = get_bloodline_stage_text(player, bloodline)
+        shown.append(f"{bloodline}" + (f" ({stage})" if stage else ""))
+
+    total = len(bloodlines)
+    if total > limit:
+        shown.append(f"+{total - limit} more")
+
+    return f"{total} owned | " + ", ".join(shown)
+
+
+def format_bloodline_page(player, start=0, limit=10):
+    """Readable multiline bloodline list used on extra profile pages."""
+    bloodlines = get_player_bloodlines(player)
+    if not bloodlines:
+        return "None"
+
+    lines = []
+    for index, bloodline in enumerate(bloodlines[start:start + limit], start=start + 1):
+        stage = get_bloodline_stage_text(player, bloodline)
+        stage_text = f" — {stage}" if stage else ""
+        lines.append(f"`{index:02}` **{bloodline}**{stage_text}")
+
+    return "\n".join(lines) if lines else "None"
+
 
 def weighted_affinity_roll():
     roll = random.random()
@@ -4101,7 +4150,10 @@ def build_player_profile_embed(member, player):
         kv_line("Streaks", f"Daily {player.get('daily_streak', 0)} • Weekly {player.get('weekly_streak', 0)}"),
     ]), False)
 
-    bloodline_text = kv_line("Kekkei Genkai", format_player_bloodlines(player))
+    bloodline_count = len(get_player_bloodlines(player))
+    bloodline_text = kv_line("Kekkei Genkai", format_bloodline_summary(player))
+    if bloodline_count > 6:
+        bloodline_text += "\n**View:** Use the profile reactions to open the full bloodline pages."
     # Sharingan is already shown inside the Kekkei Genkai list with its current
     # evolution stage. Showing a second dedicated Sharingan row made it look like
     # players owned two Sharingan paths.
@@ -4142,6 +4194,37 @@ def build_player_profile_embed(member, player):
     ]), False)
 
     return embed
+
+
+def build_player_profile_pages(member, player):
+    """Builds the main profile card plus extra pages when the player owns many bloodlines."""
+    pages = [build_player_profile_embed(member, player)]
+    bloodlines = get_player_bloodlines(player)
+
+    if len(bloodlines) <= 6:
+        return pages
+
+    page_size = 10
+    total_pages = ((len(bloodlines) - 1) // page_size) + 1
+    for page_index in range(total_pages):
+        start = page_index * page_size
+        embed = ui_embed(
+            f"{member.name}'s Bloodlines",
+            f"Showing Kekkei Genkai **{start + 1}-{min(start + page_size, len(bloodlines))}** of **{len(bloodlines)}**.",
+            "purple"
+        )
+        try:
+            embed.set_thumbnail(url=member.display_avatar.url)
+        except Exception:
+            pass
+        add_field(embed, "Kekkei Genkai List", format_bloodline_page(player, start, page_size), False)
+        add_field(embed, "Tip", "Use reactions to move between the main card and bloodline pages.", False)
+        embed.set_footer(text=f"Laentaru Bot v{BOT_VERSION} • Profile page {page_index + 2}/{total_pages + 1}")
+        pages.append(embed)
+
+    pages[0].set_footer(text=f"Laentaru Bot v{BOT_VERSION} • Profile page 1/{len(pages)}")
+    return pages
+
 
 def get_top_traits(player, limit=3):
     combined = {}
@@ -4232,9 +4315,9 @@ async def profile(ctx, member: discord.Member = None):
             await send_notice(ctx, "Profile Not Found", f"{member.mention} does not have a profile yet.", "warning")
         return
 
-    embed = build_player_profile_embed(member, player)
+    pages = build_player_profile_pages(member, player)
     save_players(players)
-    await ctx.send(embed=embed)
+    await send_paginated_embeds(ctx, pages)
 
 
 @bot.command(name="compare")
