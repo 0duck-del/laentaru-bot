@@ -1,5 +1,5 @@
 {
-    "TRAINING_COOLDOWN_MINUTES": 3,
+    "TRAINING_COOLDOWN_MINUTES": 15,
     "DUEL_DURATION_SECONDS": 30,
     "DUEL_ROUND_DELAY_SECONDS": 1.5,
     "BASE_STATS": {
@@ -287,11 +287,11 @@
         "Tsuchi": {
             "weight": 0.0001,
             "affinity_bonus": {
-                "Chakra Reserves": 15000,
-                "Chakra Control": 15000,
-                "Genjutsu": 15000,
-                "Taijutsu": 15000,
-                "Speed": 15000
+                "Chakra Reserves": 3000,
+                "Chakra Control": 3000,
+                "Genjutsu": 3000,
+                "Taijutsu": 3000,
+                "Speed": 3000
             },
             "kekkei_chance": 100,
             "possible_kekkei": [
@@ -299,18 +299,18 @@
             ],
             "special_traits": {
                 "all_natures": true,
-                "damage_multiplier": 3.5,
-                "damage_reduction": 0.7,
+                "damage_multiplier": 1.18,
+                "damage_reduction": 0.12,
                 "passive_regeneration": true,
-                "immune_to_status": true
+                "immune_to_status": false
             },
             "stat_bonus": {},
             "skill_bonus": {
-                "Chakra Reserves": 15000,
-                "Chakra Control": 15000,
-                "Genjutsu": 15000,
-                "Taijutsu": 15000,
-                "Speed": 15000
+                "Chakra Reserves": 3000,
+                "Chakra Control": 3000,
+                "Genjutsu": 3000,
+                "Taijutsu": 3000,
+                "Speed": 3000
             }
         },
         "Uzumaki": {
@@ -623,160 +623,160 @@
         "Kunai": {
             "rarity": "Common",
             "effect": "Durability",
-            "boost": 5
+            "boost": 3
         },
         "Shuriken": {
             "rarity": "Common",
             "effect": "Stamina",
-            "boost": 5
+            "boost": 3
         },
         "Smoke Bomb": {
             "rarity": "Uncommon",
             "effect": "Speed",
-            "boost": 10
+            "boost": 6
         },
         "Basic Chakra Pill": {
             "rarity": "Uncommon",
             "effect": "Chakra Reserves",
-            "boost": 10
+            "boost": 6
         },
         "Training Weights": {
             "rarity": "Rare",
             "effect": "Stamina",
-            "boost": 20
+            "boost": 11
         },
         "Scroll Fragment": {
             "rarity": "Rare",
             "effect": "Chakra Control",
-            "boost": 20
+            "boost": 11
         },
         "Forbidden Scroll Page": {
             "rarity": "Legendary",
             "effect": "Health",
-            "boost": 50
+            "boost": 28
         },
         "Tailed Beast Chakra Fragment": {
             "rarity": "Mythic",
             "effect": "Chakra Reserves",
-            "boost": 150
+            "boost": 82
         },
         "Soldier Pill": {
             "rarity": "Common",
             "effect": "Stamina",
-            "boost": 8
+            "boost": 4
         },
         "Bandage Wrap": {
             "rarity": "Common",
             "effect": "Health",
-            "boost": 8
+            "boost": 4
         },
         "Focus Tag": {
             "rarity": "Uncommon",
             "effect": "Accuracy",
-            "boost": 12
+            "boost": 7
         },
         "Chakra Ink": {
             "rarity": "Uncommon",
             "effect": "Chakra Control",
-            "boost": 15
+            "boost": 8
         },
         "Weighted Gi": {
             "rarity": "Rare",
             "effect": "Taijutsu",
-            "boost": 35
+            "boost": 19
         },
         "Mirror Lens": {
             "rarity": "Rare",
             "effect": "Accuracy",
-            "boost": 30
+            "boost": 16
         },
         "Sealing Chain Fragment": {
             "rarity": "Epic",
             "effect": "Chakra Reserves",
-            "boost": 55
+            "boost": 30
         },
         "Nature Catalyst": {
             "rarity": "Epic",
             "effect": "Chakra Control",
-            "boost": 55
+            "boost": 30
         },
         "Dojutsu Lens": {
             "rarity": "Legendary",
             "effect": "Accuracy",
-            "boost": 90
+            "boost": 50
         },
         "Bloodline Catalyst": {
             "rarity": "Legendary",
             "effect": "Chakra Control",
-            "boost": 100
+            "boost": 55
         },
         "Evolution Shard": {
             "rarity": "Legendary",
             "effect": "Chakra Reserves",
-            "boost": 75
+            "boost": 41
         },
         "Ancient Kekkei Relic": {
             "rarity": "Mythic",
             "effect": "Chakra Control",
-            "boost": 180
+            "boost": 99
         },
         "Six Paths Fragment": {
             "rarity": "Mythic",
             "effect": "Accuracy",
-            "boost": 200
+            "boost": 110
         },
         "Medical Kit": {
             "rarity": "Uncommon",
             "effect": "Health",
-            "boost": 35,
+            "boost": 19,
             "description": "A field kit that permanently improves Health."
         },
         "Chakra Battery": {
             "rarity": "Rare",
             "effect": "Chakra Reserves",
-            "boost": 75,
+            "boost": 41,
             "description": "Condensed chakra used to strengthen reserves."
         },
         "Stamina Seal": {
             "rarity": "Rare",
             "effect": "Stamina",
-            "boost": 65,
+            "boost": 36,
             "description": "A seal that improves long-fight endurance."
         },
         "Armor Plating": {
             "rarity": "Rare",
             "effect": "Durability",
-            "boost": 70,
+            "boost": 38,
             "description": "Protective plating that improves survivability."
         },
         "Precision Senbon": {
             "rarity": "Rare",
             "effect": "Accuracy",
-            "boost": 55,
+            "boost": 30,
             "description": "A precision weapon set that improves accuracy."
         },
         "Genjutsu Bell": {
             "rarity": "Epic",
             "effect": "Genjutsu",
-            "boost": 140,
+            "boost": 77,
             "description": "A bell used to sharpen illusion control."
         },
         "Taijutsu Manual": {
             "rarity": "Epic",
             "effect": "Taijutsu",
-            "boost": 140,
+            "boost": 77,
             "description": "A combat manual that improves close-range fighting."
         },
         "Chakra Control Seal": {
             "rarity": "Epic",
             "effect": "Chakra Control",
-            "boost": 140,
+            "boost": 77,
             "description": "A seal that improves chakra control."
         },
         "Speed Anklets": {
             "rarity": "Epic",
             "effect": "Speed",
-            "boost": 140,
+            "boost": 77,
             "description": "Weighted anklets that improve speed once mastered."
         },
         "Bloodline Primer": {
@@ -833,7 +833,7 @@
         "Chakra Forge Ember": {
             "rarity": "Epic",
             "effect": "Chakra Control",
-            "boost": 160,
+            "boost": 88,
             "description": "A hot ember from a chakra forge that sharpens control.",
             "use_cases": [
                 "Use to boost Chakra Control.",
@@ -844,7 +844,7 @@
         "Mist Assassin Mask": {
             "rarity": "Rare",
             "effect": "Speed",
-            "boost": 85,
+            "boost": 47,
             "description": "A mask used by silent hunters of the mist.",
             "use_cases": [
                 "Use to improve Speed.",
@@ -855,7 +855,7 @@
         "Senju Root Charm": {
             "rarity": "Legendary",
             "effect": "Health",
-            "boost": 130,
+            "boost": 72,
             "description": "A living charm pulsing with Senju-style vitality.",
             "use_cases": [
                 "Use to increase Health.",
@@ -866,7 +866,7 @@
         "Uchiha War Fan Fragment": {
             "rarity": "Legendary",
             "effect": "Genjutsu",
-            "boost": 150,
+            "boost": 82,
             "description": "A broken fan fragment carrying intense battle memory.",
             "use_cases": [
                 "Use to increase Genjutsu.",
@@ -877,7 +877,7 @@
         "Hyuga Focus Beads": {
             "rarity": "Epic",
             "effect": "Accuracy",
-            "boost": 120,
+            "boost": 66,
             "description": "Beads used to sharpen focus and precision.",
             "use_cases": [
                 "Use to boost Accuracy.",
@@ -888,7 +888,7 @@
         "Dust Relic Shard": {
             "rarity": "Mythic",
             "effect": "Chakra Control",
-            "boost": 240,
+            "boost": 132,
             "description": "A dangerous relic shard tied to particle-style chakra control.",
             "use_cases": [
                 "Use for a massive Chakra Control boost.",
@@ -899,13 +899,121 @@
         "Beast Seal Ink": {
             "rarity": "Mythic",
             "effect": "Chakra Reserves",
-            "boost": 260,
+            "boost": 143,
             "description": "Rare ink used in high-level sealing rituals.",
             "use_cases": [
                 "Use to boost Chakra Reserves.",
                 "Excellent for jutsu-heavy and Jinchuriki builds.",
                 "Great boss/event reward."
             ]
+        },
+        "Academy Kunai": {
+            "rarity": "Common",
+            "effect": "Equipment",
+            "boost": 0,
+            "description": "Equip in the weapon slot for build bonuses."
+        },
+        "ANBU Mask": {
+            "rarity": "Epic",
+            "effect": "Equipment",
+            "boost": 0,
+            "description": "Equip in the head slot for build bonuses."
+        },
+        "Jonin Flak Jacket": {
+            "rarity": "Rare",
+            "effect": "Equipment",
+            "boost": 0,
+            "description": "Equip in the chest slot for build bonuses."
+        },
+        "Chakra Thread Gloves": {
+            "rarity": "Rare",
+            "effect": "Equipment",
+            "boost": 0,
+            "description": "Equip in the hands slot for build bonuses."
+        },
+        "Sealing Ring": {
+            "rarity": "Epic",
+            "effect": "Equipment",
+            "boost": 0,
+            "description": "Equip in the ring slot for build bonuses."
+        },
+        "Forbidden Technique Scroll": {
+            "rarity": "Legendary",
+            "effect": "Equipment",
+            "boost": 0,
+            "description": "Equip in the scroll slot for build bonuses."
+        },
+        "Six Paths Relic": {
+            "rarity": "Mythic",
+            "effect": "Equipment",
+            "boost": 0,
+            "description": "Equip in the relic slot for build bonuses."
+        },
+        "Uchiha War Fan": {
+            "rarity": "Legendary",
+            "effect": "Equipment",
+            "boost": 1,
+            "description": "A legendary fan made for fire-style pressure."
+        },
+        "Hyuga Hand Wraps": {
+            "rarity": "Epic",
+            "effect": "Equipment",
+            "boost": 1,
+            "description": "Focused wraps for precision taijutsu."
+        },
+        "Senju Living Armor": {
+            "rarity": "Legendary",
+            "effect": "Equipment",
+            "boost": 1,
+            "description": "Living armor built for sustain."
+        },
+        "Rogue Shinobi Ring": {
+            "rarity": "Rare",
+            "effect": "Equipment",
+            "boost": 1,
+            "description": "A ring for fast, slippery builds."
+        },
+        "Forbidden Scroll Core": {
+            "rarity": "Mythic",
+            "effect": "Equipment",
+            "boost": 1,
+            "description": "A dangerous scroll that rewards high chakra use."
+        },
+        "Tailed Beast Relic": {
+            "rarity": "Mythic",
+            "effect": "Equipment",
+            "boost": 1,
+            "description": "A relic tuned for bossing and raid pressure."
+        },
+        "Iron Ore": {
+            "rarity": "Common",
+            "effect": "Material",
+            "boost": 1,
+            "description": "Crafting/profession material."
+        },
+        "Medicinal Herbs": {
+            "rarity": "Common",
+            "effect": "Material",
+            "boost": 1,
+            "description": "Crafting/profession material."
+        },
+        "Sealing Paper": {
+            "rarity": "Common",
+            "effect": "Material",
+            "boost": 1,
+            "description": "Crafting/profession material."
+        },
+        "Chakra Crystal": {
+            "rarity": "Common",
+            "effect": "Material",
+            "boost": 1,
+            "description": "Crafting/profession material."
+        },
+        "Rare Hide": {
+            "rarity": "Common",
+            "effect": "Material",
+            "boost": 1,
+            "description": "Crafting/profession material."
         }
     },
     "ITEM_DROP_TABLE": [
@@ -987,39 +1095,39 @@
         "Sannin-Level",
         "Kage-Level"
     ],
-    "LEVELS_PER_RANK": 10,
-    "XP_BASE": 100,
-    "XP_EXPONENT": 1.35,
+    "LEVELS_PER_RANK": 15,
+    "XP_BASE": 300,
+    "XP_EXPONENT": 1.68,
     "SKILL_SCORE": {
-        "level_multiplier_per_level": 0.08,
-        "kekkei_bonus": 10000,
-        "non_civilian_clan_bonus": 500,
-        "extra_chakra_nature_bonus": 750
+        "level_multiplier_per_level": 0.035,
+        "kekkei_bonus": 1500,
+        "non_civilian_clan_bonus": 250,
+        "extra_chakra_nature_bonus": 300
     },
     "LEVEL_UP": {
-        "stat_gain_min": 3,
-        "stat_gain_max": 8,
-        "affinity_gain_min": 10,
-        "affinity_gain_max": 40,
-        "normal_affinity_cap": 10000,
+        "stat_gain_min": 1,
+        "stat_gain_max": 3,
+        "affinity_gain_min": 4,
+        "affinity_gain_max": 16,
+        "normal_affinity_cap": 8500,
         "scale_break_chance": 1,
-        "scale_break_roll_max": 100,
-        "scale_break_gain_min": 50,
-        "scale_break_gain_max": 250,
+        "scale_break_roll_max": 250,
+        "scale_break_gain_min": 15,
+        "scale_break_gain_max": 80,
         "chakra_nature_unlock_levels": [
-            15,
-            30,
-            50,
-            75
+            20,
+            40,
+            65,
+            90
         ]
     },
     "TRAINING": {
-        "xp_min": 25,
-        "xp_max": 75,
+        "xp_min": 8,
+        "xp_max": 20,
         "stat_gain_min": 1,
-        "stat_gain_max": 5,
+        "stat_gain_max": 1,
         "item_drop_chance": 1,
-        "item_drop_roll_max": 5
+        "item_drop_roll_max": 18
     },
     "PVP": {
         "min_hit_chance": 0.55,
@@ -1122,11 +1230,11 @@
             "hp_per_difficulty": 90,
             "base_power": 5200,
             "power_per_difficulty": 1700,
-            "base_xp": 125,
-            "xp_per_difficulty": 65,
-            "base_item_reward_chance": 28,
-            "item_reward_chance_per_difficulty": 6,
-            "max_item_reward_chance": 85,
+            "base_xp": 40,
+            "xp_per_difficulty": 20,
+            "base_item_reward_chance": 10,
+            "item_reward_chance_per_difficulty": 3,
+            "max_item_reward_chance": 55,
             "base_win_chance": 0.46,
             "power_difference_weight": 0.28,
             "min_win_chance": 0.18,
@@ -1137,11 +1245,11 @@
             "hp_per_difficulty": 175,
             "base_power": 10500,
             "power_per_difficulty": 2800,
-            "base_xp": 350,
-            "xp_per_difficulty": 150,
-            "base_item_reward_chance": 60,
-            "item_reward_chance_per_difficulty": 6,
-            "max_item_reward_chance": 95,
+            "base_xp": 63,
+            "xp_per_difficulty": 31,
+            "base_item_reward_chance": 22,
+            "item_reward_chance_per_difficulty": 4,
+            "max_item_reward_chance": 55,
             "base_win_chance": 0.24,
             "power_difference_weight": 0.26,
             "min_win_chance": 0.05,
@@ -1159,9 +1267,9 @@
     },
     "TRAINING_KEKKEI": {
         "enabled": true,
-        "general_roll_max": 100,
+        "general_roll_max": 450,
         "general_success_value": 1,
-        "dojutsu_roll_max": 150,
+        "dojutsu_roll_max": 750,
         "dojutsu_success_value": 1,
         "general_pool": [
             "Wood Release",
@@ -1198,9 +1306,9 @@
     },
     "SHARINGAN": {
         "enabled": true,
-        "training_level_chance": 4,
-        "fight_level_chance": 8,
-        "roll_max": 100,
+        "training_level_chance": 1,
+        "fight_level_chance": 2,
+        "roll_max": 150,
         "levels": [
             "One Tomoe Sharingan",
             "Two Tomoe Sharingan",
@@ -1209,28 +1317,28 @@
             "Eternal Mangekyo Sharingan"
         ],
         "max_level_index": 3,
-        "skill_bonus_per_level": 750,
-        "genjutsu_bonus_per_level": 250,
-        "chakra_control_bonus_per_level": 150,
-        "speed_bonus_per_level": 100
+        "skill_bonus_per_level": 250,
+        "genjutsu_bonus_per_level": 90,
+        "chakra_control_bonus_per_level": 65,
+        "speed_bonus_per_level": 45
     },
     "RANDOM_EVENTS": {
         "enabled": true,
         "channel_id": 1501257462727311572,
-        "interval_seconds": 3600,
+        "interval_seconds": 5400,
         "event_duration_seconds": 120,
         "weighted_events": {
-            "xp": 40,
-            "shinobi": 35,
-            "beast": 10,
-            "cursemark": 15
+            "xp": 25,
+            "shinobi": 40,
+            "beast": 8,
+            "cursemark": 12
         },
         "xp_values": [
+            40,
+            60,
+            80,
             100,
-            150,
-            200,
-            250,
-            300
+            125
         ],
         "shinobi_difficulties": [
             1,
@@ -2338,13 +2446,13 @@
             }
         }
     },
-    "BOT_VERSION": "3.0.2-village-war",
+    "BOT_VERSION": "3.3.0-deep-mmorpg",
     "REROLLS_PER_PLAYER": 10,
     "TOURNAMENT": {
         "min_win_chance": 0.18,
         "max_win_chance": 0.82,
-        "winner_xp_min": 125,
-        "winner_xp_max": 250
+        "winner_xp_min": 60,
+        "winner_xp_max": 130
     },
     "TAILED_BEASTS": {
         "duration_hours": 24,
@@ -2401,17 +2509,17 @@
         "starting_ryo": 0,
         "daily_ryo_min": 75,
         "daily_ryo_max": 150,
-        "daily_xp_min": 75,
-        "daily_xp_max": 150,
+        "daily_xp_min": 20,
+        "daily_xp_max": 45,
         "daily_streak_bonus_ryo": 15,
-        "daily_streak_bonus_xp": 20,
+        "daily_streak_bonus_xp": 8,
         "daily_streak_cap": 14,
         "weekly_ryo_min": 450,
         "weekly_ryo_max": 900,
-        "weekly_xp_min": 500,
-        "weekly_xp_max": 950,
+        "weekly_xp_min": 110,
+        "weekly_xp_max": 230,
         "weekly_streak_bonus_ryo": 100,
-        "weekly_streak_bonus_xp": 125,
+        "weekly_streak_bonus_xp": 45,
         "weekly_streak_cap": 8,
         "daily_cooldown_hours": 15,
         "daily_reset_grace_hours": 48,
@@ -2419,33 +2527,33 @@
         "weekly_reset_grace_hours": 240,
         "rare_item_daily_chance": 8,
         "rare_item_weekly_chance": 35,
-        "training_ryo_min": 15,
-        "training_ryo_max": 45,
-        "combat_win_ryo_min": 35,
-        "combat_win_ryo_max": 90,
-        "event_xp_ryo_min": 20,
-        "event_xp_ryo_max": 60,
-        "shinobi_event_ryo_min": 75,
-        "shinobi_event_ryo_max": 180,
-        "beast_event_ryo_min": 200,
-        "beast_event_ryo_max": 450
+        "training_ryo_min": 6,
+        "training_ryo_max": 16,
+        "combat_win_ryo_min": 15,
+        "combat_win_ryo_max": 40,
+        "event_xp_ryo_min": 10,
+        "event_xp_ryo_max": 35,
+        "shinobi_event_ryo_min": 35,
+        "shinobi_event_ryo_max": 85,
+        "beast_event_ryo_min": 100,
+        "beast_event_ryo_max": 225
     },
     "SCALING": {
         "enabled": true,
-        "level_power_base": 80,
-        "level_power_exponent": 1.18,
+        "level_power_base": 42,
+        "level_power_exponent": 1.04,
         "stat_power_weights": {
-            "Health": 0.9,
-            "Durability": 1.25,
-            "Stamina": 0.85,
-            "Accuracy": 1.1
+            "Health": 0.648,
+            "Durability": 0.9,
+            "Stamina": 0.612,
+            "Accuracy": 0.792
         },
         "affinity_power_weights": {
-            "Chakra Reserves": 1.05,
-            "Chakra Control": 1.35,
-            "Genjutsu": 1.0,
-            "Taijutsu": 1.25,
-            "Speed": 1.15
+            "Chakra Reserves": 0.756,
+            "Chakra Control": 0.972,
+            "Genjutsu": 0.72,
+            "Taijutsu": 0.9,
+            "Speed": 0.828
         },
         "kekkei_power": {
             "Sharingan": 850,
@@ -2484,25 +2592,25 @@
         },
         "nature_power_per_nature": 120,
         "rare_nature_bonus": 180,
-        "village_power_multiplier_per_skill_bonus": 8e-05,
-        "rating_softcap_start": 25000,
-        "rating_softcap_strength": 0.55,
+        "village_power_multiplier_per_skill_bonus": 2.5e-05,
+        "rating_softcap_start": 12000,
+        "rating_softcap_strength": 0.48,
         "duel_hp_base": 100,
         "duel_hp_per_health": 1.0,
         "duel_hp_per_durability": 0.35,
         "duel_chakra_per_reserve": 1.0,
         "duel_stamina_per_stamina": 1.0,
-        "damage_ratio_min": 0.72,
-        "damage_ratio_max": 1.35,
-        "damage_ratio_strength": 0.34,
-        "damage_softcap_start": 160,
-        "damage_softcap_strength": 0.6,
+        "damage_ratio_min": 0.82,
+        "damage_ratio_max": 1.18,
+        "damage_ratio_strength": 0.18,
+        "damage_softcap_start": 120,
+        "damage_softcap_strength": 0.5,
         "low_hp_execute_threshold": 0.22,
         "low_hp_execute_bonus": 1.08,
-        "defender_durability_reduction_cap": 0.32,
+        "defender_durability_reduction_cap": 0.42,
         "same_tier_min_damage_percent": 0.06,
         "global_base_power": 100,
-        "global_power_scale": 100,
+        "global_power_scale": 160,
         "base_power_by_stat": {
             "Health": 5,
             "Durability": 7,
@@ -2576,8 +2684,8 @@
         "minimum_damage": 4,
         "minimum_starting_hp": 100,
         "defend_damage_multiplier": 0.5,
-        "win_xp_min": 50,
-        "win_xp_max": 110,
+        "win_xp_min": 18,
+        "win_xp_max": 45,
         "costs": {
             "attack": {
                 "stamina": 8
@@ -2619,13 +2727,13 @@
         "genjutsu_penalty_divisor": 100000,
         "genjutsu_penalty_cap": 0.12,
         "genjutsu_turns": 2,
-        "chakra_regen_per_turn": 10,
-        "stamina_regen_per_turn": 10,
-        "global_damage_scale": 100,
-        "max_damage_percent_attack": 0.18,
-        "max_damage_percent_heavy": 0.26,
-        "max_damage_percent_taijutsu_combo": 0.23,
-        "max_damage_percent_jutsu": 0.3,
+        "chakra_regen_per_turn": 7,
+        "stamina_regen_per_turn": 9,
+        "global_damage_scale": 145,
+        "max_damage_percent_attack": 0.13,
+        "max_damage_percent_heavy": 0.2,
+        "max_damage_percent_taijutsu_combo": 0.18,
+        "max_damage_percent_jutsu": 0.24,
         "accuracy_speed_weight": 0.35,
         "accuracy_control_weight": 0.2,
         "evasion_speed_weight": 0.75,
@@ -2634,8 +2742,8 @@
         "max_level_hit_bonus": 0.06,
         "damage_variance_min": 0.94,
         "damage_variance_max": 1.06,
-        "level_damage_bonus_per_level": 0.01,
-        "max_level_damage_bonus": 0.2,
+        "level_damage_bonus_per_level": 0.004,
+        "max_level_damage_bonus": 0.12,
         "attack_base_damage": 14,
         "heavy_base_damage": 24,
         "combo_base_damage": 20,
@@ -2650,8 +2758,8 @@
         "jutsu_reserves_multiplier": 0.0013,
         "jutsu_level_multiplier": 1.05,
         "jutsu_defense_divisor": 48,
-        "low_chakra_damage_threshold": 0.25,
-        "low_chakra_damage_multiplier": 0.85,
+        "low_chakra_damage_threshold": 0.3,
+        "low_chakra_damage_multiplier": 0.72,
         "low_chakra_hit_threshold": 0.25,
         "low_chakra_hit_penalty": 0.04,
         "combat_rating_weights": {
@@ -2668,17 +2776,26 @@
             "Extra Nature": 125
         },
         "accuracy_stat_weight": 0.45,
-        "jutsu_global_cooldown_turns": 1,
-        "jutsu_same_cooldown_turns": 3,
+        "jutsu_global_cooldown_turns": 2,
+        "jutsu_same_cooldown_turns": 5,
         "transformation_success_stun_turns": 2,
         "transformation_fail_self_stun_turns": 2,
-        "transformation_fail_self_stun_max_turns": 8
+        "transformation_fail_self_stun_max_turns": 8,
+        "damage_ratio_strength": 0.2,
+        "damage_ratio_min": 0.78,
+        "damage_ratio_max": 1.22
     },
     "UI": {
         "embed_color_primary": "orange",
         "embed_color_success": "green",
         "embed_color_warning": "gold",
-        "embed_color_danger": "red"
+        "embed_color_danger": "red",
+        "profile_style": "mmorpg_card",
+        "profile_show_power_breakdown": true,
+        "profile_bloodlines_per_page": 10,
+        "profile_inventory_preview": 8,
+        "profile_jutsu_preview": 8,
+        "progress_bar_size": 12
     },
     "TRAIT_MODIFIERS": {
         "description": "Every bonus here is config-driven. Add or adjust stats/skills without editing bot.py.",
@@ -3244,12 +3361,12 @@
         "enabled": true,
         "currency_name": "Ryo",
         "active_banner": "bloodline_festival",
-        "single_cost": 250,
-        "multi_cost": 2250,
+        "single_cost": 500,
+        "multi_cost": 4600,
         "multi_rolls": 10,
-        "pity_rolls": 30,
+        "pity_rolls": 40,
         "pity_min_rarity": "Legendary",
-        "mythic_pity_rolls": 90,
+        "mythic_pity_rolls": 120,
         "duplicate_jutsu_refund_percent": 35,
         "duplicate_bloodline_refund_ryo": 750,
         "featured_chance": 0.45,
@@ -3299,8 +3416,8 @@
                 },
                 {
                     "type": "xp",
-                    "amount_min": 60,
-                    "amount_max": 120
+                    "amount_min": 24,
+                    "amount_max": 48
                 }
             ],
             "Uncommon": [
@@ -3327,14 +3444,14 @@
                 {
                     "type": "skill_boost",
                     "target": "Chakra Control",
-                    "amount_min": 25,
-                    "amount_max": 60
+                    "amount_min": 12,
+                    "amount_max": 30
                 },
                 {
                     "type": "stat_boost",
                     "target": "Accuracy",
-                    "amount_min": 8,
-                    "amount_max": 20
+                    "amount_min": 4,
+                    "amount_max": 10
                 }
             ],
             "Rare": [
@@ -3378,14 +3495,14 @@
                 {
                     "type": "skill_boost",
                     "target": "Speed",
-                    "amount_min": 65,
-                    "amount_max": 130
+                    "amount_min": 32,
+                    "amount_max": 65
                 },
                 {
                     "type": "stat_boost",
                     "target": "Durability",
-                    "amount_min": 25,
-                    "amount_max": 55
+                    "amount_min": 12,
+                    "amount_max": 27
                 }
             ],
             "Legendary": [
@@ -3436,14 +3553,14 @@
                 {
                     "type": "skill_boost",
                     "target": "Chakra Reserves",
-                    "amount_min": 140,
-                    "amount_max": 280
+                    "amount_min": 70,
+                    "amount_max": 140
                 },
                 {
                     "type": "stat_boost",
                     "target": "Health",
-                    "amount_min": 65,
-                    "amount_max": 125
+                    "amount_min": 32,
+                    "amount_max": 62
                 }
             ],
             "Mythic": [
@@ -3893,10 +4010,10 @@
     ],
     "KEKKEI_EVOLUTION": {
         "enabled": true,
-        "training_roll_max": 100,
-        "training_success_chance": 3,
-        "fight_roll_max": 100,
-        "fight_success_chance": 7,
+        "training_roll_max": 500,
+        "training_success_chance": 1,
+        "fight_roll_max": 350,
+        "fight_success_chance": 2,
         "default_required_item": "Evolution Shard",
         "paths": {
             "Sharingan": [
@@ -3914,7 +4031,7 @@
                 },
                 {
                     "name": "Two Tomoe Sharingan",
-                    "level": 8,
+                    "level": 11,
                     "item": "Evolution Shard",
                     "item_amount": 1,
                     "skills": {
@@ -3928,7 +4045,7 @@
                 },
                 {
                     "name": "Three Tomoe Sharingan",
-                    "level": 16,
+                    "level": 22,
                     "item": "Evolution Shard",
                     "item_amount": 2,
                     "skills": {
@@ -3942,7 +4059,7 @@
                 },
                 {
                     "name": "Mangekyo Sharingan",
-                    "level": 28,
+                    "level": 38,
                     "item": "Dojutsu Lens",
                     "item_amount": 1,
                     "ryo_cost": 2500,
@@ -3957,7 +4074,7 @@
                 },
                 {
                     "name": "Eternal Mangekyo Sharingan",
-                    "level": 42,
+                    "level": 57,
                     "item": "Six Paths Fragment",
                     "item_amount": 1,
                     "ryo_cost": 7500,
@@ -3985,7 +4102,7 @@
                 },
                 {
                     "name": "Mastered Byakugan",
-                    "level": 18,
+                    "level": 25,
                     "item": "Dojutsu Lens",
                     "item_amount": 1,
                     "skills": {
@@ -3999,7 +4116,7 @@
                 },
                 {
                     "name": "Tenseigan Path",
-                    "level": 45,
+                    "level": 61,
                     "item": "Six Paths Fragment",
                     "item_amount": 1,
                     "ryo_cost": 9000,
@@ -4028,7 +4145,7 @@
                 },
                 {
                     "name": "Blood Dragon Ketsuryugan",
-                    "level": 25,
+                    "level": 34,
                     "item": "Bloodline Catalyst",
                     "item_amount": 1,
                     "ryo_cost": 3500,
@@ -4056,7 +4173,7 @@
                 },
                 {
                     "name": "Deep Forest Bloom",
-                    "level": 25,
+                    "level": 34,
                     "item": "Nature Catalyst",
                     "item_amount": 2,
                     "ryo_cost": 4000,
@@ -4084,7 +4201,7 @@
                 },
                 {
                     "name": "Demonic Ice Mastery",
-                    "level": 22,
+                    "level": 30,
                     "item": "Nature Catalyst",
                     "item_amount": 1,
                     "ryo_cost": 3000,
@@ -4111,7 +4228,7 @@
                 },
                 {
                     "name": "Corrosive Lava Release",
-                    "level": 24,
+                    "level": 33,
                     "item": "Nature Catalyst",
                     "item_amount": 1,
                     "ryo_cost": 3500,
@@ -4139,7 +4256,7 @@
                 },
                 {
                     "name": "Controlled Sage Transformation",
-                    "level": 30,
+                    "level": 41,
                     "item": "Ancient Kekkei Relic",
                     "item_amount": 1,
                     "ryo_cost": 5000,
@@ -4163,8 +4280,8 @@
         "power_weight": 0.28,
         "min_success": 0.18,
         "max_success": 0.92,
-        "fail_xp": 15,
-        "fail_ryo": 10,
+        "fail_xp": 5,
+        "fail_ryo": 5,
         "missions": {
             "lost_cat": {
                 "name": "Find the Lost Cat",
@@ -4175,12 +4292,12 @@
                 "rank": "D",
                 "level": 1,
                 "power": 1200,
-                "xp_min": 45,
-                "xp_max": 90,
+                "xp_min": 10,
+                "xp_max": 15,
                 "ryo_min": 35,
                 "ryo_max": 80,
-                "cooldown_minutes": 30,
-                "item_chance": 5,
+                "cooldown_minutes": 60,
+                "item_chance": 3,
                 "items": [
                     "Kunai",
                     "Shuriken"
@@ -4195,12 +4312,12 @@
                 "rank": "C",
                 "level": 3,
                 "power": 4500,
-                "xp_min": 100,
-                "xp_max": 180,
+                "xp_min": 17,
+                "xp_max": 31,
                 "ryo_min": 90,
                 "ryo_max": 175,
-                "cooldown_minutes": 60,
-                "item_chance": 12,
+                "cooldown_minutes": 121,
+                "item_chance": 7,
                 "items": [
                     "Smoke Bomb",
                     "Basic Chakra Pill"
@@ -4215,12 +4332,12 @@
                 "rank": "C",
                 "level": 5,
                 "power": 6500,
-                "xp_min": 140,
-                "xp_max": 240,
+                "xp_min": 24,
+                "xp_max": 42,
                 "ryo_min": 130,
                 "ryo_max": 240,
-                "cooldown_minutes": 90,
-                "item_chance": 18,
+                "cooldown_minutes": 181,
+                "item_chance": 11,
                 "items": [
                     "Training Weights",
                     "Scroll Fragment"
@@ -4235,12 +4352,12 @@
                 "rank": "B",
                 "level": 10,
                 "power": 10500,
-                "xp_min": 240,
-                "xp_max": 380,
+                "xp_min": 42,
+                "xp_max": 66,
                 "ryo_min": 250,
                 "ryo_max": 425,
-                "cooldown_minutes": 180,
-                "item_chance": 28,
+                "cooldown_minutes": 364,
+                "item_chance": 18,
                 "items": [
                     "Scroll Fragment",
                     "Forbidden Scroll Page"
@@ -4255,12 +4372,12 @@
                 "rank": "A",
                 "level": 18,
                 "power": 17500,
-                "xp_min": 420,
-                "xp_max": 700,
+                "xp_min": 73,
+                "xp_max": 123,
                 "ryo_min": 450,
                 "ryo_max": 850,
-                "cooldown_minutes": 360,
-                "item_chance": 40,
+                "cooldown_minutes": 729,
+                "item_chance": 26,
                 "items": [
                     "Forbidden Scroll Page",
                     "Tailed Beast Chakra Fragment"
@@ -4275,12 +4392,12 @@
                 "rank": "S",
                 "level": 30,
                 "power": 30000,
-                "xp_min": 900,
-                "xp_max": 1500,
+                "xp_min": 158,
+                "xp_max": 264,
                 "ryo_min": 1000,
                 "ryo_max": 1800,
-                "cooldown_minutes": 720,
-                "item_chance": 60,
+                "cooldown_minutes": 1458,
+                "item_chance": 39,
                 "items": [
                     "Tailed Beast Chakra Fragment",
                     "Forbidden Scroll Page"
@@ -4310,23 +4427,23 @@
     },
     "LEVEL_CAPS": {
         "enabled": true,
-        "stat_base_cap": 250,
-        "stat_cap_per_level": 35,
-        "skill_base_cap": 10000,
-        "skill_cap_per_level": 550,
-        "absolute_stat_cap": 10000,
-        "absolute_skill_cap": 50000,
+        "stat_base_cap": 160,
+        "stat_cap_per_level": 14,
+        "skill_base_cap": 5200,
+        "skill_cap_per_level": 175,
+        "absolute_stat_cap": 3500,
+        "absolute_skill_cap": 22000,
         "devmode_ignores_caps": true
     },
     "VILLAGE_EXPANSION": {
         "max_level": 25,
-        "base_level_cost": 5000,
-        "level_cost_growth": 1.35,
-        "skill_bonus_per_level": 75,
-        "training_xp_bonus_per_level": 1,
-        "power_bonus_percent_per_level": 0.01,
+        "base_level_cost": 10000,
+        "level_cost_growth": 1.55,
+        "skill_bonus_per_level": 35,
+        "training_xp_bonus_per_level": 0,
+        "power_bonus_percent_per_level": 0.003,
         "war_min_yes_votes": 2,
-        "war_win_power_reward": 500,
+        "war_win_power_reward": 125,
         "war_win_fund_reward": 2500,
         "war_win_power_percent": 0.015,
         "ranks": [
@@ -4360,7 +4477,505 @@
             }
         ],
         "war_duration_hours": 24,
-        "war_player_ryo_reward": 2500,
-        "war_village_fund_reward": 2500
+        "war_player_ryo_reward": 1200,
+        "war_village_fund_reward": 1800,
+        "tax_percent": 0.02,
+        "research_projects": [
+            "Training Grounds",
+            "Medical Corps",
+            "Market Roads",
+            "War Room"
+        ]
+    },
+    "PROGRESSION": {
+        "max_levels_per_xp_gain": 1,
+        "cap_overflow_xp_after_level": true,
+        "training_daily_soft_cap": 6,
+        "training_fatigue_per_extra_session": 0.1,
+        "training_min_fatigue_multiplier": 0.35,
+        "show_progression_tips": true,
+        "horizontal_progression_starts_level": 35,
+        "prestige_unlock_level": 80,
+        "max_level": 100,
+        "xp_curve_note": "MMORPG pacing: slower levels, harder caps, more horizontal systems."
+    },
+    "MMORPG_ROLES": {
+        "striker": {
+            "name": "Striker",
+            "description": "Direct damage and pressure.",
+            "power_multiplier": 1.03,
+            "stats": {},
+            "skills": {
+                "Taijutsu": 80,
+                "Speed": 45
+            }
+        },
+        "guardian": {
+            "name": "Guardian",
+            "description": "Tank/control build with better durability.",
+            "power_multiplier": 1.01,
+            "stats": {
+                "Health": 45,
+                "Durability": 65
+            },
+            "skills": {}
+        },
+        "controller": {
+            "name": "Controller",
+            "description": "Genjutsu, accuracy pressure, and stun utility.",
+            "power_multiplier": 1.02,
+            "stats": {
+                "Accuracy": 30
+            },
+            "skills": {
+                "Genjutsu": 90,
+                "Chakra Control": 45
+            }
+        },
+        "medic": {
+            "name": "Medic",
+            "description": "Sustain/support role for raids and group content.",
+            "power_multiplier": 0.99,
+            "stats": {
+                "Health": 35
+            },
+            "skills": {
+                "Chakra Control": 90,
+                "Chakra Reserves": 55
+            }
+        },
+        "assassin": {
+            "name": "Assassin",
+            "description": "Speed, crit pressure, and burst windows.",
+            "power_multiplier": 1.025,
+            "stats": {
+                "Accuracy": 35
+            },
+            "skills": {
+                "Speed": 110,
+                "Taijutsu": 45
+            }
+        }
+    },
+    "EQUIPMENT": {
+        "slots": [
+            "weapon",
+            "head",
+            "chest",
+            "hands",
+            "ring",
+            "scroll",
+            "relic"
+        ],
+        "items": {
+            "Academy Kunai": {
+                "slot": "weapon",
+                "rarity": "Common",
+                "stats": {
+                    "Accuracy": 8
+                },
+                "skills": {},
+                "power_multiplier": 1.0
+            },
+            "ANBU Mask": {
+                "slot": "head",
+                "rarity": "Epic",
+                "stats": {
+                    "Accuracy": 35
+                },
+                "skills": {
+                    "Speed": 120
+                },
+                "power_multiplier": 1.015,
+                "passives": {
+                    "crit_chance": 0.04,
+                    "dodge_chance": 0.03
+                },
+                "description": "A stealth mask that boosts burst and evasion."
+            },
+            "Jonin Flak Jacket": {
+                "slot": "chest",
+                "rarity": "Rare",
+                "stats": {
+                    "Health": 40,
+                    "Durability": 45
+                },
+                "skills": {},
+                "power_multiplier": 1.01
+            },
+            "Chakra Thread Gloves": {
+                "slot": "hands",
+                "rarity": "Rare",
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 85
+                },
+                "power_multiplier": 1.01
+            },
+            "Sealing Ring": {
+                "slot": "ring",
+                "rarity": "Epic",
+                "stats": {},
+                "skills": {
+                    "Chakra Reserves": 120
+                },
+                "power_multiplier": 1.015
+            },
+            "Forbidden Technique Scroll": {
+                "slot": "scroll",
+                "rarity": "Legendary",
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 180,
+                    "Genjutsu": 120
+                },
+                "power_multiplier": 1.025
+            },
+            "Six Paths Relic": {
+                "slot": "relic",
+                "rarity": "Mythic",
+                "stats": {
+                    "Accuracy": 80,
+                    "Health": 70
+                },
+                "skills": {
+                    "Chakra Reserves": 260,
+                    "Chakra Control": 220
+                },
+                "power_multiplier": 1.04
+            },
+            "Uchiha War Fan": {
+                "slot": "weapon",
+                "rarity": "Legendary",
+                "stats": {},
+                "skills": {
+                    "Genjutsu": 220,
+                    "Chakra Control": 140
+                },
+                "passives": {
+                    "jutsu_damage": 0.06,
+                    "burn_chance": 0.04
+                },
+                "description": "A legendary fan made for fire-style pressure."
+            },
+            "Hyuga Hand Wraps": {
+                "slot": "hands",
+                "rarity": "Epic",
+                "stats": {
+                    "Accuracy": 50
+                },
+                "skills": {
+                    "Taijutsu": 180
+                },
+                "passives": {
+                    "stun_chance": 0.04,
+                    "basic_damage": 0.05
+                },
+                "description": "Focused wraps for precision taijutsu."
+            },
+            "Senju Living Armor": {
+                "slot": "chest",
+                "rarity": "Legendary",
+                "stats": {
+                    "Health": 120,
+                    "Durability": 90
+                },
+                "skills": {
+                    "Chakra Reserves": 160
+                },
+                "passives": {
+                    "damage_reduction": 0.06,
+                    "regen_percent": 0.02
+                },
+                "description": "Living armor built for sustain."
+            },
+            "Rogue Shinobi Ring": {
+                "slot": "ring",
+                "rarity": "Rare",
+                "stats": {
+                    "Stamina": 45
+                },
+                "skills": {
+                    "Speed": 90
+                },
+                "passives": {
+                    "dodge_chance": 0.025,
+                    "ryo_bonus": 0.04
+                },
+                "description": "A ring for fast, slippery builds."
+            },
+            "Forbidden Scroll Core": {
+                "slot": "scroll",
+                "rarity": "Mythic",
+                "stats": {},
+                "skills": {
+                    "Chakra Control": 300,
+                    "Chakra Reserves": 220
+                },
+                "passives": {
+                    "jutsu_damage": 0.1,
+                    "chakra_refund": 0.08
+                },
+                "description": "A dangerous scroll that rewards high chakra use."
+            },
+            "Tailed Beast Relic": {
+                "slot": "relic",
+                "rarity": "Mythic",
+                "stats": {
+                    "Health": 160
+                },
+                "skills": {
+                    "Chakra Reserves": 350
+                },
+                "passives": {
+                    "damage_reduction": 0.04,
+                    "world_boss_damage": 0.1
+                },
+                "description": "A relic tuned for bossing and raid pressure."
+            }
+        }
+    },
+    "PROFESSIONS": {
+        "enabled": true,
+        "cooldown_minutes": 45,
+        "professions": {
+            "miner": {
+                "name": "Miner",
+                "resource": "Iron Ore",
+                "xp_min": 5,
+                "xp_max": 12,
+                "ryo_min": 5,
+                "ryo_max": 14,
+                "items": [
+                    "Armor Plating",
+                    "Chakra Forge Ember"
+                ]
+            },
+            "herbalist": {
+                "name": "Herbalist",
+                "resource": "Medicinal Herb",
+                "xp_min": 5,
+                "xp_max": 12,
+                "ryo_min": 5,
+                "ryo_max": 14,
+                "items": [
+                    "Medical Kit",
+                    "Bandage Wrap"
+                ]
+            },
+            "scribe": {
+                "name": "Scribe",
+                "resource": "Scroll Ink",
+                "xp_min": 6,
+                "xp_max": 14,
+                "ryo_min": 6,
+                "ryo_max": 16,
+                "items": [
+                    "Scroll Fragment",
+                    "Jutsu Archive Scroll"
+                ]
+            },
+            "smith": {
+                "name": "Smith",
+                "resource": "Forged Steel",
+                "xp_min": 6,
+                "xp_max": 14,
+                "ryo_min": 6,
+                "ryo_max": 16,
+                "items": [
+                    "Academy Kunai",
+                    "Jonin Flak Jacket"
+                ]
+            }
+        }
+    },
+    "RAIDS": {
+        "cooldown_minutes": 240,
+        "party_size_limit": 5,
+        "join_window_seconds": 90,
+        "turns_per_phase": 3,
+        "raids": {
+            "akatsuki": {
+                "name": "Akatsuki Hideout",
+                "level": 25,
+                "recommended_players": 3,
+                "power": 18000,
+                "boss_hp": 85000,
+                "phases": [
+                    {
+                        "name": "Infiltration",
+                        "mechanic": "Controllers reduce enemy accuracy."
+                    },
+                    {
+                        "name": "Ambush",
+                        "mechanic": "Guardians reduce party damage taken."
+                    },
+                    {
+                        "name": "Extraction",
+                        "mechanic": "Strikers and Assassins burn the boss down."
+                    }
+                ],
+                "xp_min": 220,
+                "xp_max": 380,
+                "ryo_min": 250,
+                "ryo_max": 600,
+                "items": [
+                    "ANBU Mask",
+                    "Rogue Shinobi Ring",
+                    "Forbidden Scroll Core"
+                ]
+            },
+            "ten_tails_echo": {
+                "name": "Ten-Tails Echo",
+                "level": 55,
+                "recommended_players": 5,
+                "power": 52000,
+                "boss_hp": 220000,
+                "phases": [
+                    {
+                        "name": "Chakra Storm",
+                        "mechanic": "Medic sustain matters."
+                    },
+                    {
+                        "name": "Beast Roar",
+                        "mechanic": "Guardians absorb raidwide damage."
+                    },
+                    {
+                        "name": "Seal Window",
+                        "mechanic": "All damage is amplified for final burst."
+                    }
+                ],
+                "xp_min": 520,
+                "xp_max": 850,
+                "ryo_min": 650,
+                "ryo_max": 1500,
+                "items": [
+                    "Tailed Beast Relic",
+                    "Forbidden Scroll Core",
+                    "Senju Living Armor"
+                ]
+            },
+            "mist_anbu": {
+                "name": "Mist ANBU Blacksite",
+                "level": 18,
+                "recommended_players": 2,
+                "power": 10500,
+                "boss_hp": 42000,
+                "phases": [
+                    {
+                        "name": "Silent Entry",
+                        "mechanic": "Assassins gain bonus damage."
+                    },
+                    {
+                        "name": "Trap Hall",
+                        "mechanic": "Accuracy checks matter."
+                    }
+                ],
+                "xp_min": 140,
+                "xp_max": 260,
+                "ryo_min": 180,
+                "ryo_max": 420,
+                "items": [
+                    "ANBU Mask",
+                    "Hyuga Hand Wraps",
+                    "Rogue Shinobi Ring"
+                ]
+            }
+        }
+    },
+    "WORLD_BOSS": {
+        "enabled": true,
+        "name": "Ten-Tails Echo",
+        "hp": 500000,
+        "level": 60,
+        "duration_hours": 24,
+        "attack_cooldown_minutes": 30,
+        "base_reward_xp": 80,
+        "top_reward_xp": 300,
+        "top_reward_items": [
+            "Six Paths Relic",
+            "Six Paths Fragment",
+            "Beast Seal Ink"
+        ]
+    },
+    "SEASONS": {
+        "current": "Season 1: Rise of Villages",
+        "soft_reset_ladder_only": true,
+        "ranked_titles": [
+            "Bronze Shinobi",
+            "Silver Shinobi",
+            "Gold Shinobi",
+            "Anbu Duelist",
+            "Kage Contender",
+            "Legendary Shinobi"
+        ],
+        "rank_thresholds": {
+            "Bronze Shinobi": 0,
+            "Silver Shinobi": 1100,
+            "Gold Shinobi": 1300,
+            "Anbu Duelist": 1550,
+            "Kage Contender": 1800,
+            "Legendary Shinobi": 2100
+        },
+        "win_rating_gain": 24,
+        "loss_rating_loss": 16,
+        "participation_xp": 25,
+        "seasonal_reward_titles": [
+            "Season 1 Contender",
+            "Season 1 Elite",
+            "Season 1 Champion"
+        ]
+    },
+    "VILLAGE_POLITICS": {
+        "enabled": true,
+        "election_duration_hours": 24,
+        "tax_min_percent": 0,
+        "tax_max_percent": 15,
+        "research": {
+            "training_dojo": {
+                "name": "Training Dojo",
+                "cost": 12000,
+                "description": "Adds village training XP efficiency."
+            },
+            "war_room": {
+                "name": "War Room",
+                "cost": 18000,
+                "description": "Improves war reward scaling and village war identity."
+            },
+            "market_stalls": {
+                "name": "Market Stalls",
+                "cost": 15000,
+                "description": "Reduces market tax for village members."
+            },
+            "sealing_library": {
+                "name": "Sealing Library",
+                "cost": 24000,
+                "description": "Improves raid and boss utility rewards."
+            }
+        }
+    },
+    "MARKET_V2": {
+        "listing_tax_percent": 4,
+        "max_price": 1000000,
+        "listing_duration_hours": 72,
+        "categories": [
+            "Equipment",
+            "Consumable",
+            "Material",
+            "Collectible",
+            "Jutsu Utility"
+        ]
+    },
+    "COSMETICS": {
+        "titles": [
+            "Rookie Shinobi",
+            "Village Loyalist",
+            "Raid Breaker",
+            "World Boss Slayer",
+            "Market Mogul",
+            "Arena Duelist",
+            "Kage Candidate",
+            "Legendary Shinobi"
+        ]
     }
 }
