@@ -4173,6 +4173,34 @@ def resolve_player_record(players, member):
     return players[user_id], user_id
 
 
+
+
+def format_chakra_nature_profile(player):
+    """Readable chakra nature block for profile/progression embeds."""
+    natures = player.get("chakra_natures", []) or []
+    if not natures:
+        return "**Owned:** Not rolled yet\n**Next:** Use `$roll` to discover your first chakra nature."
+
+    unlock_levels = CONFIG.get("LEVEL_UP", {}).get("chakra_nature_unlock_levels", [15, 30, 50, 75])
+    level = int(player.get("level", 1) or 1)
+    next_unlock = next((lvl for lvl in unlock_levels if level < int(lvl)), None)
+    rare = [nature for nature in natures if nature in ["Ying", "Yang"]]
+    common = [nature for nature in natures if nature not in rare]
+
+    lines = [
+        f"**Owned:** {', '.join(natures)}",
+        f"**Total:** {len(natures)} nature(s)",
+    ]
+    if common:
+        lines.append(f"**Basic:** {', '.join(common)}")
+    if rare:
+        lines.append(f"**Rare:** {', '.join(rare)}")
+    if next_unlock:
+        lines.append(f"**Next Nature Unlock:** Level {next_unlock}")
+    else:
+        lines.append("**Next Nature Unlock:** All configured nature unlock milestones reached")
+    return "\n".join(lines)
+
 def build_player_profile_embed(member, player):
     """Safe, compact MMORPG profile card.
 
@@ -4240,6 +4268,8 @@ def build_player_profile_embed(member, player):
         kv_line("Ryo", f"{fmt_num(player.get('ryo', 0))} Ryo"),
         kv_line("Rerolls", player.get("rerolls_remaining", REROLLS_PER_PLAYER)),
     ]), False)
+
+    add_field(embed, "Chakra Natures", format_chakra_nature_profile(player), False)
 
     bloodline_text = kv_line("Kekkei", safe_call(format_bloodline_summary, format_player_bloodlines(player), player, 5))
     if sharingan_name and not CONFIG.get("KEKKEI_EVOLUTION", {}).get("enabled", False):
@@ -4718,6 +4748,134 @@ def get_profession_config():
     return CONFIG.get("PROFESSIONS", {})
 
 
+def get_default_crafting_config():
+    return {
+        "enabled": True,
+        "craft_xp_per_recipe": 18,
+        "recipes": {
+            "academy_kunai": {
+                "name": "Academy Kunai",
+                "description": "Starter weapon gear for early shinobi builds.",
+                "output": "Academy Kunai",
+                "amount": 1,
+                "ryo_cost": 75,
+                "level_required": 1,
+                "materials": {"Iron Ore": 2, "Leather": 1},
+            },
+            "chakra_battery": {
+                "name": "Chakra Battery",
+                "description": "A crafted reserve booster for jutsu-heavy builds.",
+                "output": "Chakra Battery",
+                "amount": 1,
+                "ryo_cost": 125,
+                "level_required": 3,
+                "materials": {"Chakra Ore": 2, "Scroll Ink": 1},
+            },
+            "armor_plating": {
+                "name": "Armor Plating",
+                "description": "Defensive plating used by tankier shinobi.",
+                "output": "Armor Plating",
+                "amount": 1,
+                "ryo_cost": 140,
+                "level_required": 5,
+                "materials": {"Iron Ore": 3, "Forged Steel": 1},
+            },
+            "chakra_control_seal": {
+                "name": "Chakra Control Seal",
+                "description": "A refined seal for improving chakra control.",
+                "output": "Chakra Control Seal",
+                "amount": 1,
+                "ryo_cost": 225,
+                "level_required": 8,
+                "materials": {"Scroll Ink": 3, "Chakra Ore": 1},
+            },
+            "anbu_mask": {
+                "name": "ANBU Mask",
+                "description": "Advanced headgear with assassination-style passives.",
+                "output": "ANBU Mask",
+                "amount": 1,
+                "ryo_cost": 500,
+                "level_required": 15,
+                "materials": {"Forged Steel": 2, "Leather": 2, "Scroll Ink": 1},
+            },
+            "forbidden_scroll_core": {
+                "name": "Forbidden Scroll Core",
+                "description": "Endgame crafting component for dangerous scroll builds.",
+                "output": "Forbidden Scroll Core",
+                "amount": 1,
+                "ryo_cost": 1200,
+                "level_required": 25,
+                "materials": {"Scroll Ink": 5, "Chakra Ore": 4, "Ancient Relic Dust": 1},
+            },
+        },
+        "material_names": ["Iron Ore", "Leather", "Chakra Ore", "Scroll Ink", "Forged Steel", "Medicinal Herb", "Ancient Relic Dust"],
+    }
+
+
+def get_crafting_config():
+    cfg = CONFIG.get("CRAFTING")
+    if isinstance(cfg, dict) and cfg.get("recipes"):
+        return cfg
+    return get_default_crafting_config()
+
+
+def normalize_recipe_key(search_text):
+    cleaned = str(search_text or "").lower().strip().replace(" ", "_").replace("-", "_")
+    recipes = get_crafting_config().get("recipes", {})
+    if cleaned in recipes:
+        return cleaned
+    for key, data in recipes.items():
+        if data.get("name", key).lower() == str(search_text or "").lower().strip():
+            return key
+    for key, data in recipes.items():
+        haystack = f"{key} {data.get('name', '')} {data.get('output', '')}".lower()
+        if cleaned and cleaned.replace("_", " ") in haystack:
+            return key
+    return None
+
+
+def format_recipe_requirements(recipe):
+    materials = recipe.get("materials", {}) or {}
+    mats = ", ".join(f"{name} x{fmt_num(amount)}" for name, amount in materials.items()) or "None"
+    return "\n".join([
+        kv_line("Output", f"{recipe.get('output', recipe.get('name', 'Unknown'))} x{fmt_num(recipe.get('amount', 1))}"),
+        kv_line("Materials", mats),
+        kv_line("Ryo Cost", f"{fmt_num(recipe.get('ryo_cost', 0))} Ryo"),
+        kv_line("Level Required", recipe.get("level_required", 1)),
+    ])
+
+
+def player_can_craft(player, recipe, qty=1):
+    qty = max(1, int(qty or 1))
+    if int(player.get("level", 1) or 1) < int(recipe.get("level_required", 1) or 1):
+        return False, f"You must be level **{recipe.get('level_required', 1)}** to craft this."
+    total_cost = int(recipe.get("ryo_cost", 0) or 0) * qty
+    if int(player.get("ryo", 0) or 0) < total_cost:
+        return False, f"You need **{fmt_num(total_cost)} Ryo**."
+    inventory = player.get("inventory", {}) or {}
+    missing = []
+    for material, amount in (recipe.get("materials", {}) or {}).items():
+        required = int(amount or 0) * qty
+        owned = int(inventory.get(material, 0) or 0)
+        if owned < required:
+            missing.append(f"{material} x{fmt_num(required - owned)}")
+    if missing:
+        return False, "Missing materials: **" + ", ".join(missing) + "**"
+    return True, None
+
+
+def apply_crafting_xp(player, recipe, qty=1):
+    cfg = get_crafting_config()
+    xp_gain = int(recipe.get("craft_xp", cfg.get("craft_xp_per_recipe", 18)) or 0) * max(1, int(qty or 1))
+    player["profession_xp"] = int(player.get("profession_xp", 0) or 0) + xp_gain
+    leveled = False
+    while player["profession_xp"] >= int(player.get("profession_level", 1) or 1) * 100:
+        player["profession_xp"] -= int(player.get("profession_level", 1) or 1) * 100
+        player["profession_level"] = int(player.get("profession_level", 1) or 1) + 1
+        leveled = True
+    return xp_gain, leveled
+
+
 def get_raid_config():
     return CONFIG.get("RAIDS", {})
 
@@ -5029,6 +5187,9 @@ async def gather(ctx):
     if player["profession_xp"] >= int(player.get("profession_level", 1)) * 100:
         player["profession_xp"] = 0
         player["profession_level"] = int(player.get("profession_level", 1)) + 1
+    resource_name = prof.get("resource", "materials")
+    resource_amount = random.randint(int(prof.get("resource_min", 1)), int(prof.get("resource_max", 3)))
+    add_item(player, resource_name, resource_amount)
     item = None
     if random.randint(1, 100) <= 18:
         pool = prof.get("items") or []
@@ -5036,11 +5197,112 @@ async def gather(ctx):
             item = random.choice(pool)
             add_item(player, item)
     save_players(players)
-    embed = ui_embed("Profession Work Complete", f"You gathered **{prof.get('resource', 'materials')}**.", "success")
-    lines = [kv_line("Profession", format_profession_summary(player)), kv_line("XP", f"+{xp}"), kv_line("Ryo", f"+{ryo}")]
+    embed = ui_embed("Profession Work Complete", f"You gathered **{resource_name} x{fmt_num(resource_amount)}**.", "success")
+    lines = [kv_line("Profession", format_profession_summary(player)), kv_line("Material", f"{resource_name} x{fmt_num(resource_amount)}"), kv_line("XP", f"+{xp}"), kv_line("Ryo", f"+{ryo}")]
     if item:
         lines.append(kv_line("Bonus Item", item))
     add_field(embed, "Results", "\n".join(lines), False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="materials", aliases=["mats"])
+async def materials(ctx):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+    player = players[user_id]
+    material_names = set(get_crafting_config().get("material_names", []))
+    for recipe in get_crafting_config().get("recipes", {}).values():
+        material_names.update((recipe.get("materials", {}) or {}).keys())
+    inventory = player.get("inventory", {}) or {}
+    owned = [(name, inventory.get(name, 0)) for name in sorted(material_names) if int(inventory.get(name, 0) or 0) > 0]
+    embed = ui_embed("Crafting Materials", "Materials are gathered through professions and consumed by `$craft`.", "info")
+    if not owned:
+        add_field(embed, "Owned Materials", "No crafting materials yet. Use `$professions`, then `$gather`.", False)
+    else:
+        add_field(embed, "Owned Materials", "\n".join(f"**{name}:** x{fmt_num(amount)}" for name, amount in owned), False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="crafting", aliases=["recipes", "recipe"])
+async def crafting(ctx, *, recipe_name: str = None):
+    cfg = get_crafting_config()
+    recipes = cfg.get("recipes", {})
+    if not recipes:
+        await send_notice(ctx, "Crafting Disabled", "No crafting recipes are configured yet.", "warning")
+        return
+
+    if recipe_name:
+        key = normalize_recipe_key(recipe_name)
+        if not key:
+            await send_notice(ctx, "Recipe Not Found", "Use `$crafting` to view available recipes.", "warning")
+            return
+        recipe = recipes[key]
+        embed = ui_embed(f"Recipe — {recipe.get('name', key)}", recipe.get("description", "Craftable item."), "gold")
+        add_field(embed, "Requirements", format_recipe_requirements(recipe), False)
+        add_field(embed, "Craft", f"`$craft {key}` or `$craft {recipe.get('name', key)}`", False)
+        await ctx.send(embed=embed)
+        return
+
+    embed = ui_embed("Crafting Recipes", "Use `$crafting <recipe>` for details or `$craft <recipe> [qty]` to craft.", "gold")
+    for key, recipe in list(recipes.items())[:15]:
+        mats = ", ".join(f"{name} x{amount}" for name, amount in (recipe.get("materials", {}) or {}).items())
+        add_field(embed, recipe.get("name", key), f"`$craft {key}` → **{recipe.get('output', recipe.get('name', key))} x{recipe.get('amount', 1)}**\nMaterials: {mats or 'None'}\nCost: **{fmt_num(recipe.get('ryo_cost', 0))} Ryo**", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="craft")
+async def craft(ctx, *, args: str = None):
+    if not args:
+        await send_notice(ctx, "Crafting", "Use `$craft <recipe> [qty]`. Example: `$craft chakra_battery 2`", "info")
+        return
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+    player = players[user_id]
+    raw = args.strip()
+    qty = 1
+    parts = raw.split()
+    if len(parts) > 1:
+        try:
+            qty = max(1, int(parts[-1]))
+            raw = " ".join(parts[:-1])
+        except ValueError:
+            qty = 1
+    key = normalize_recipe_key(raw)
+    if not key:
+        await send_notice(ctx, "Recipe Not Found", "Use `$crafting` to view available recipes.", "warning")
+        return
+    recipe = get_crafting_config().get("recipes", {})[key]
+    ok, reason = player_can_craft(player, recipe, qty)
+    if not ok:
+        await send_notice(ctx, "Cannot Craft", reason, "warning")
+        return
+
+    for material, amount in (recipe.get("materials", {}) or {}).items():
+        remove_item(player, material, int(amount) * qty)
+    total_cost = int(recipe.get("ryo_cost", 0) or 0) * qty
+    player["ryo"] = int(player.get("ryo", 0) or 0) - total_cost
+    output = recipe.get("output", recipe.get("name", key))
+    output_amount = int(recipe.get("amount", 1) or 1) * qty
+    add_item(player, output, output_amount)
+    xp_gain, prof_leveled = apply_crafting_xp(player, recipe, qty)
+    player["crafted_items"] = int(player.get("crafted_items", 0) or 0) + output_amount
+    save_players(players)
+
+    embed = ui_embed("Crafting Complete", f"Created **{output} x{fmt_num(output_amount)}**.", "success")
+    lines = [
+        kv_line("Recipe", recipe.get("name", key)),
+        kv_line("Ryo Spent", f"{fmt_num(total_cost)} Ryo"),
+        kv_line("Crafting XP", f"+{fmt_num(xp_gain)}"),
+    ]
+    if prof_leveled:
+        lines.append(kv_line("Profession Level", f"Now Lv.{player.get('profession_level', 1)}"))
+    add_field(embed, "Result", "\n".join(lines), False)
     await ctx.send(embed=embed)
 
 
@@ -8969,17 +9231,20 @@ async def help_command(ctx, topic: str = None):
             "aliases": ["profession", "gather", "work", "crafting", "craft"],
             "title": "Laentaru Help — Professions",
             "tone": "success",
-            "description": "Non-combat MMORPG progression for materials, work, and future crafting.",
+            "description": "Non-combat MMORPG progression for materials, work, recipes, and crafted gear/items.",
             "fields": [
                 ("Professions", [
-                    ("$professions", "view your profession levels and XP"),
-                    ("$gather <profession>", "gather materials and gain profession XP"),
-                    ("$work <profession>", "alias for $gather"),
+                    ("$professions", "view/select your profession and XP"),
+                    ("$gather", "gather profession materials and gain profession XP"),
+                    ("$work", "alias for $gather"),
+                    ("$materials", "view owned crafting materials"),
+                    ("$crafting [recipe]", "view recipes or one recipe's requirements"),
+                    ("$craft <recipe> [qty]", "consume materials/Ryo to craft items or gear"),
                 ]),
                 ("Examples", [
-                    ("$gather mining", "mine materials"),
-                    ("$gather fishing", "fish for resources"),
-                    ("$gather crafting", "progress crafting-style work"),
+                    ("$professions miner", "choose mining"),
+                    ("$gather", "gather materials for your selected profession"),
+                    ("$craft chakra_battery", "craft a Chakra Battery if you have materials"),
                 ]),
             ],
         },
@@ -9106,7 +9371,8 @@ async def info(ctx):
             "**Kekkei Genkai:** Rare awakenings from rolls, training, or special odds.\n"
             "**Sharingan:** Can level through training and fights if unlocked.\n"
             "**Curse Marks:** Temporary buffs or debuffs from events.\n"
-            "**Tailed Beasts:** Captured beasts stay sealed for 24 hours and boost all traits by tail count."
+            "**Tailed Beasts:** Captured beasts stay sealed for 24 hours and boost all traits by tail count.\n"
+            "**Crafting:** Professions produce materials that can be turned into gear, utility items, and economy resources."
         ),
         inline=False
     )
