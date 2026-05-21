@@ -80,7 +80,7 @@ def validate_config(config):
 
 CONFIG = load_config()
 validate_config(CONFIG)
-BOT_VERSION = CONFIG.get("BOT_VERSION", "3.0.1-village-content")
+BOT_VERSION = CONFIG.get("BOT_VERSION", "3.2.0-mmorpg-systems")
 REROLLS_PER_PLAYER = int(CONFIG.get("REROLLS_PER_PLAYER", 3))
 
 # Everything below is sourced from config.json so you can balance the bot without editing code.
@@ -1105,6 +1105,8 @@ def migrate_player(player):
     player.setdefault("kekkei_genkai_list", [])
     player.setdefault("kekkei_evolution", {})
     player.setdefault("bloodline_fragments", {})
+    player.setdefault("training_day", None)
+    player.setdefault("training_sessions_today", 0)
     sync_player_bloodlines(player)
 
     if isinstance(player.get("inventory"), list):
@@ -1206,6 +1208,7 @@ def add_player_bloodline(player, bloodline_name, apply_modifiers=True):
         apply_trait_delta(player.setdefault("stats", BASE_STATS.copy()), modifier.get("stats", {}))
         apply_trait_delta(player.setdefault("affinities", {}), modifier.get("skills", {}))
     grant_kekkei_jutsu(player, bloodline_name)
+    # MMORPG pacing: each owned bloodline matters, but duplicate stacking is kept under control by caps and lower bonuses.
     apply_player_caps(player)
     player["hidden_skill_score"] = calculate_hidden_skill_score(player) if player.get("affinities") else 0
     return True
@@ -1227,55 +1230,6 @@ def format_player_bloodlines(player, limit=8):
     if len(bloodlines) > limit:
         parts.append(f"+{len(bloodlines) - limit} more")
     return ", ".join(parts)
-
-def get_bloodline_stage_text(player, bloodline):
-    """Returns a readable evolution/stage label for one owned bloodline."""
-    if not bloodline:
-        return None
-    if "get_kekkei_stage_name" not in globals():
-        return None
-    try:
-        stage = get_kekkei_stage_name(player, bloodline)
-    except TypeError:
-        stage = get_kekkei_stage_name(player)
-    except Exception:
-        return None
-    if not stage or str(stage).lower() == str(bloodline).lower():
-        return None
-    return str(stage)
-
-
-def format_bloodline_summary(player, limit=6):
-    """Compact one-line summary for the main profile card."""
-    bloodlines = get_player_bloodlines(player)
-    if not bloodlines:
-        return "None"
-
-    shown = []
-    for bloodline in bloodlines[:limit]:
-        stage = get_bloodline_stage_text(player, bloodline)
-        shown.append(f"{bloodline}" + (f" ({stage})" if stage else ""))
-
-    total = len(bloodlines)
-    if total > limit:
-        shown.append(f"+{total - limit} more")
-
-    return f"{total} owned | " + ", ".join(shown)
-
-
-def format_bloodline_page(player, start=0, limit=10):
-    """Readable multiline bloodline list used on extra profile pages."""
-    bloodlines = get_player_bloodlines(player)
-    if not bloodlines:
-        return "None"
-
-    lines = []
-    for index, bloodline in enumerate(bloodlines[start:start + limit], start=start + 1):
-        stage = get_bloodline_stage_text(player, bloodline)
-        stage_text = f" — {stage}" if stage else ""
-        lines.append(f"`{index:02}` **{bloodline}**{stage_text}")
-
-    return "\n".join(lines) if lines else "None"
 
 
 def weighted_affinity_roll():
@@ -2334,7 +2288,17 @@ def create_player(ctx):
         "gacha_legendary_pulls": 0,
         "gacha_mythic_pity": 0,
         "kekkei_evolution": {},
-        "bloodline_fragments": {}
+        "bloodline_fragments": {},
+        "build_role": None,
+        "equipment": {},
+        "profession": None,
+        "profession_xp": 0,
+        "profession_level": 1,
+        "last_profession": None,
+        "raid_cooldowns": {},
+        "world_boss_damage": 0,
+        "pvp_rating": 1000,
+        "season_points": 0
     }
 
 
@@ -2384,6 +2348,80 @@ def calculate_jutsu_power(player, jutsu_data):
 
     return int(base_power + (scaling_value / max(1, scaling_divisor)))
 
+
+def get_progression_config():
+    return CONFIG.get("PROGRESSION", {})
+
+
+def get_xp_gain_limit():
+    return int(get_progression_config().get("max_levels_per_xp_gain", 1))
+
+
+def get_today_key():
+    return now_utc().strftime("%Y-%m-%d")
+
+
+def get_training_fatigue_multiplier(player):
+    cfg = get_progression_config()
+    soft_cap = int(cfg.get("training_daily_soft_cap", 8))
+    penalty = float(cfg.get("training_fatigue_per_extra_session", 0.08))
+    minimum = float(cfg.get("training_min_fatigue_multiplier", 0.45))
+
+    today = get_today_key()
+    if player.get("training_day") != today:
+        player["training_day"] = today
+        player["training_sessions_today"] = 0
+
+    sessions = int(player.get("training_sessions_today", 0))
+    if sessions < soft_cap:
+        return 1.0
+
+    return max(minimum, 1.0 - ((sessions - soft_cap + 1) * penalty))
+
+
+def increment_training_session(player):
+    today = get_today_key()
+    if player.get("training_day") != today:
+        player["training_day"] = today
+        player["training_sessions_today"] = 0
+    player["training_sessions_today"] = int(player.get("training_sessions_today", 0)) + 1
+    return player["training_sessions_today"]
+
+
+def format_power_tier(rating):
+    rating = int(rating or 0)
+    if rating >= 50000:
+        return "World Boss"
+    if rating >= 30000:
+        return "Kage-Class"
+    if rating >= 18000:
+        return "Elite Jonin"
+    if rating >= 10000:
+        return "Jonin"
+    if rating >= 5500:
+        return "Chunin"
+    if rating >= 2200:
+        return "Genin"
+    return "Academy"
+
+
+def build_mmorpg_trait_rows(player):
+    rows = []
+    stats = player.get("stats", {}) or {}
+    affinities = player.get("affinities", {}) or {}
+
+    for name, value in stats.items():
+        cap = get_trait_cap(player, name, "stat") if "get_trait_cap" in globals() else None
+        cap_text = f"/{fmt_num(cap)}" if cap else ""
+        rows.append(f"**{name}:** {fmt_num(value)}{cap_text}")
+
+    for name, value in affinities.items():
+        cap = get_trait_cap(player, name, "skill") if "get_trait_cap" in globals() else None
+        cap_text = f"/{fmt_num(cap)}" if cap else ""
+        rows.append(f"**{name}:** {fmt_num(value)}{cap_text} — {get_skill_level(value)}")
+
+    return rows
+
 def level_up_scaling(player):
     for stat in player["stats"]:
         player["stats"][stat] += random.randint(CONFIG.get("LEVEL_UP", {}).get("stat_gain_min", 3), CONFIG.get("LEVEL_UP", {}).get("stat_gain_max", 8))
@@ -2411,17 +2449,25 @@ def level_up_scaling(player):
 
 
 def add_xp(player, amount):
-    player["xp"] += amount
+    amount = max(0, int(amount or 0))
+    player["xp"] = int(player.get("xp", 0)) + amount
     leveled_up = False
     levels_gained = 0
+    max_levels = max(1, get_xp_gain_limit())
 
-    while player["xp"] >= get_required_xp(player["level"]):
+    while player["xp"] >= get_required_xp(player["level"]) and levels_gained < max_levels:
         player["xp"] -= get_required_xp(player["level"])
         player["level"] += 1
         player["rank"] = get_ninja_rank(player["level"])
         level_up_scaling(player)
         leveled_up = True
         levels_gained += 1
+
+    # MMORPG pacing: never allow one reward/event to jump a player several levels.
+    if get_progression_config().get("cap_overflow_xp_after_level", True):
+        required = get_required_xp(player["level"])
+        if player["xp"] >= required:
+            player["xp"] = max(0, required - 1)
 
     apply_player_caps(player)
     player["hidden_skill_score"] = calculate_hidden_skill_score(player)
@@ -3301,6 +3347,12 @@ def calculate_player_power_profile(player):
     village_bonus = get_total_village_skill_bonus(village_name) if village_name else 0
     raw *= 1 + (village_bonus * scaling.get("village_power_multiplier_per_skill_bonus", 0.00008))
 
+    # v3.2 MMORPG layer: gear, selected build role, profession mastery, and seasonal rating add horizontal power.
+    if "get_mmorpg_power_modifiers" in globals():
+        mmorpg_mods = get_mmorpg_power_modifiers(player)
+        raw += mmorpg_mods.get("flat_power", 0)
+        raw *= mmorpg_mods.get("power_multiplier", 1.0)
+
     global_power_scale = max(1, int(scaling.get("global_power_scale", 100)))
     raw *= (100 / global_power_scale)
 
@@ -3398,6 +3450,14 @@ def finalize_pvp_damage(damage, attacker_player, defender_player, move_type):
     damage = apply_global_damage_scale(damage)
     damage = apply_damage_softcap(damage)
     damage = cap_damage_by_move(damage, defender_player, move_type)
+
+    attacker_passives = get_equipment_passives(attacker_player) if "get_equipment_passives" in globals() else {}
+    defender_passives = get_equipment_passives(defender_player) if "get_equipment_passives" in globals() else {}
+    if move_type == "jutsu":
+        damage *= 1 + float(attacker_passives.get("jutsu_damage", 0))
+    if move_type in ["attack", "basic", "heavy", "taijutsu_combo"]:
+        damage *= 1 + float(attacker_passives.get("basic_damage", 0))
+    damage *= max(0.25, 1 - float(defender_passives.get("damage_reduction", 0)))
 
     min_floor = config.get("minimum_damage", 4)
     return max(min_floor, int(damage))
@@ -4114,13 +4174,34 @@ def resolve_player_record(players, member):
 
 
 def build_player_profile_embed(member, player):
-    sharingan_name = get_sharingan_level_name(player)
+    """Safe, compact MMORPG profile card.
+
+    This version is intentionally defensive because older players.json records may be
+    missing newer v3.3 fields like equipment, title, pvp_rating, professions, etc.
+    """
+    player = player or {}
+    player.setdefault("stats", BASE_STATS.copy())
+    if player.get("affinities") is None:
+        player["affinities"] = {}
+    player.setdefault("chakra_natures", [])
+    player.setdefault("known_jutsu", [])
+    player.setdefault("inventory", {})
+    player.setdefault("kekkei_genkai_list", [])
+    player.setdefault("equipment", {})
+
+    def safe_call(fn, fallback, *args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception:
+            return fallback
+
+    sharingan_name = safe_call(get_sharingan_level_name, None, player)
     curse_mark = player.get("curse_mark")
     curse_text = "None"
 
-    if curse_mark:
+    if isinstance(curse_mark, dict):
         try:
-            expiry = datetime.fromisoformat(curse_mark["expires_at"])
+            expiry = datetime.fromisoformat(curse_mark.get("expires_at"))
             if now_utc() < expiry:
                 multiplier = float(curse_mark.get("multiplier", 1.0))
                 effect = "Buff" if multiplier >= 1.0 else "Debuff"
@@ -4131,11 +4212,20 @@ def build_player_profile_embed(member, player):
         except Exception:
             curse_text = "Unknown"
 
-    level = player.get("level", 1)
-    required_xp = get_required_xp(level)
+    level = int(player.get("level", 1) or 1)
+    required_xp = max(1, safe_call(get_required_xp, 100, level))
+    xp_current = max(0, int(player.get("xp", 0) or 0))
+    xp_percent = min(100, int((xp_current / required_xp) * 100))
+    combat_rating = safe_call(calculate_combat_rating, 0, player) if player.get("has_rolled") else 0
+    power_tier = safe_call(format_power_tier, "Unranked", combat_rating)
+
     embed = ui_embed(
         f"{member.name}'s Shinobi Card",
-        f"{ICONS['rank']} **{player.get('rank', 'Academy Student')}**  •  {ICONS['level']} Level **{level}**",
+        (
+            f"{ICONS.get('rank', '🎖️')} **{player.get('rank', 'Academy Student')}**  •  "
+            f"{ICONS.get('level', '⭐')} Level **{level}**  •  "
+            f"{ICONS.get('combat', '⚔️')} **{power_tier}**"
+        ),
         "success"
     )
     try:
@@ -4143,88 +4233,90 @@ def build_player_profile_embed(member, player):
     except Exception:
         pass
 
-    add_field(embed, "Progress", "\n".join([
-        resource_line("XP", player.get("xp", 0), required_xp),
-        kv_line("Rerolls", player.get("rerolls_remaining", REROLLS_PER_PLAYER)),
+    add_field(embed, "Progression", "\n".join([
+        resource_line("XP", xp_current, required_xp),
+        kv_line("Next Level", f"{fmt_num(max(0, required_xp - xp_current))} XP needed ({xp_percent}%)"),
+        kv_line("Combat Rating", fmt_num(combat_rating)),
         kv_line("Ryo", f"{fmt_num(player.get('ryo', 0))} Ryo"),
-        kv_line("Streaks", f"Daily {player.get('daily_streak', 0)} • Weekly {player.get('weekly_streak', 0)}"),
+        kv_line("Rerolls", player.get("rerolls_remaining", REROLLS_PER_PLAYER)),
     ]), False)
 
-    bloodline_count = len(get_player_bloodlines(player))
-    bloodline_text = kv_line("Kekkei Genkai", format_bloodline_summary(player))
-    if bloodline_count > 6:
-        bloodline_text += "\n**View:** Use the profile reactions to open the full bloodline pages."
-    # Sharingan is already shown inside the Kekkei Genkai list with its current
-    # evolution stage. Showing a second dedicated Sharingan row made it look like
-    # players owned two Sharingan paths.
+    bloodline_text = kv_line("Kekkei", safe_call(format_bloodline_summary, format_player_bloodlines(player), player, 5))
     if sharingan_name and not CONFIG.get("KEKKEI_EVOLUTION", {}).get("enabled", False):
         bloodline_text += f"\n{kv_line('Sharingan', sharingan_name)}"
 
     add_field(embed, "Identity", "\n".join([
         kv_line("Clan", player.get("clan") or "Not rolled"),
-        kv_line("Village", format_player_village_title(player)),
+        kv_line("Village", safe_call(format_player_village_title, player.get("village") or "None", player)),
         kv_line("Title", player.get("title") or "None"),
         bloodline_text,
-        kv_line("Chakra Nature", compact_list(player.get("chakra_natures", []), "Not rolled")),
+        kv_line("Natures", compact_list(player.get("chakra_natures", []), "Not rolled", 5)),
     ]), False)
 
-    add_field(embed, "Active Effects", "\n".join([
-        kv_line("Jinchuriki", format_active_tailed_beast(player)),
-        kv_line("Curse Mark", curse_text),
-    ]), False)
-
-    stats_text = "\n".join(f"**{stat}:** {fmt_num(value)}" for stat, value in player.get("stats", {}).items()) or "None"
-    add_field(embed, "Base Stats", stats_text, True)
-
-    if player.get("affinities"):
-        affinity_text = "\n".join(
-            f"**{name}:** {fmt_num(value)} — {get_skill_level(value)}"
-            for name, value in player.get("affinities", {}).items()
-        )
+    if player.get("has_rolled"):
+        top_traits = safe_call(get_top_traits, [], player, 4)
+        low_traits = safe_call(get_low_traits, [], player, 3)
+        build_name, build_score = safe_call(get_build_archetype, (safe_call(get_player_role_name, "Unassigned", player), 0), player)
     else:
-        affinity_text = "Use `$roll` to reveal affinities."
-    add_field(embed, "Affinities", affinity_text, True)
+        top_traits, low_traits, build_name = [], [], "Unrolled"
 
-    known_jutsu = player.get("known_jutsu", [])
-    inventory = player.get("inventory", {})
-    inventory_text = ", ".join(f"{item} x{amount}" for item, amount in inventory.items()) or "Empty"
-    add_field(embed, "Loadout", "\n".join([
-        kv_line("Known Jutsu", compact_list(known_jutsu, "None learned", 6)),
-        kv_line("Inventory", truncate_text(inventory_text, 450)),
+    add_field(embed, "Build Snapshot", "\n".join([
+        kv_line("Archetype", build_name),
+        kv_line("Strongest Traits", ", ".join(f"{name} {fmt_num(value)}" for name, value in top_traits) or "None"),
+        kv_line("Weak Spots", ", ".join(f"{name} {fmt_num(value)}" for name, value in low_traits) or "None"),
     ]), False)
 
+    trait_rows = safe_call(build_mmorpg_trait_rows, [], player)
+    if not trait_rows and not player.get("has_rolled"):
+        trait_rows = ["Use `$roll` first."]
+    half = max(1, (len(trait_rows) + 1) // 2)
+    add_field(embed, "Stats", "\n".join(trait_rows[:half]) or "Use `$roll` first.", True)
+    add_field(embed, "Skills", "\n".join(trait_rows[half:]) or "Use `$roll` first.", True)
+
+    inventory = player.get("inventory", {}) if isinstance(player.get("inventory", {}), dict) else {}
+    known_jutsu = player.get("known_jutsu", []) if isinstance(player.get("known_jutsu", []), list) else []
+    inventory_preview_limit = int(CONFIG.get("UI", {}).get("profile_inventory_preview", 8))
+    jutsu_preview_limit = int(CONFIG.get("UI", {}).get("profile_jutsu_preview", 8))
+    inventory_items = [f"{item} x{amount}" for item, amount in inventory.items()]
+    add_field(embed, "Loadout", "\n".join([
+        kv_line("Known Jutsu", compact_list(known_jutsu, "None learned", jutsu_preview_limit)),
+        kv_line("Inventory", compact_list(inventory_items, "Empty", inventory_preview_limit)),
+    ]), False)
+
+    active_beast = safe_call(format_active_tailed_beast, "None", player)
+    add_field(embed, "Active Effects", "\n".join([
+        kv_line("Jinchuriki", active_beast),
+        kv_line("Curse Mark", curse_text),
+        kv_line("Streaks", f"Daily {player.get('daily_streak', 0)} • Weekly {player.get('weekly_streak', 0)}"),
+    ]), False)
+
+    embed.set_footer(text=f"Laentaru Bot v{BOT_VERSION} • MMORPG profile • Use $help for commands")
     return embed
 
-
-def build_player_profile_pages(member, player):
-    """Builds the main profile card plus extra pages when the player owns many bloodlines."""
-    pages = [build_player_profile_embed(member, player)]
+def build_profile_bloodline_pages(member, player):
     bloodlines = get_player_bloodlines(player)
+    per_page = int(CONFIG.get("UI", {}).get("profile_bloodlines_per_page", 10))
+    pages = [build_player_profile_embed(member, player)]
 
-    if len(bloodlines) <= 6:
+    if len(bloodlines) <= 5:
         return pages
 
-    page_size = 10
-    total_pages = ((len(bloodlines) - 1) // page_size) + 1
-    for page_index in range(total_pages):
-        start = page_index * page_size
+    for start_index in range(0, len(bloodlines), per_page):
+        page_number = (start_index // per_page) + 1
         embed = ui_embed(
             f"{member.name}'s Bloodlines",
-            f"Showing Kekkei Genkai **{start + 1}-{min(start + page_size, len(bloodlines))}** of **{len(bloodlines)}**.",
+            f"Owned Kekkei Genkai and evolution stages. Page **{page_number}**.",
             "purple"
         )
         try:
             embed.set_thumbnail(url=member.display_avatar.url)
         except Exception:
             pass
-        add_field(embed, "Kekkei Genkai List", format_bloodline_page(player, start, page_size), False)
-        add_field(embed, "Tip", "Use reactions to move between the main card and bloodline pages.", False)
-        embed.set_footer(text=f"Laentaru Bot v{BOT_VERSION} • Profile page {page_index + 2}/{total_pages + 1}")
+        add_field(embed, "Kekkei Archive", format_bloodline_page(player, start_index, per_page), False)
+        embed.set_footer(text=f"Laentaru Bot v{BOT_VERSION} • Bloodline archive")
         pages.append(embed)
 
-    pages[0].set_footer(text=f"Laentaru Bot v{BOT_VERSION} • Profile page 1/{len(pages)}")
     return pages
-
 
 def get_top_traits(player, limit=3):
     combined = {}
@@ -4315,9 +4407,1167 @@ async def profile(ctx, member: discord.Member = None):
             await send_notice(ctx, "Profile Not Found", f"{member.mention} does not have a profile yet.", "warning")
         return
 
-    pages = build_player_profile_pages(member, player)
+    try:
+        pages = build_profile_bloodline_pages(member, player)
+        save_players(players)
+        if len(pages) > 1:
+            await send_paginated_embeds(ctx, pages)
+        else:
+            await ctx.send(embed=pages[0])
+    except Exception as exc:
+        # Last-resort fallback so $profile never fully dies because of a UI/helper bug.
+        print(f"Profile command fallback for {getattr(member, 'id', 'unknown')}: {exc}")
+        embed = ui_embed(f"{member.name}'s Profile", "Basic fallback profile loaded.", "warning")
+        try:
+            embed.set_thumbnail(url=member.display_avatar.url)
+        except Exception:
+            pass
+        add_field(embed, "Core", "\n".join([
+            kv_line("Level", player.get("level", 1)),
+            kv_line("Rank", player.get("rank", "Academy Student")),
+            kv_line("Clan", player.get("clan") or "Not rolled"),
+            kv_line("Village", player.get("village") or "None"),
+            kv_line("Ryo", fmt_num(player.get("ryo", 0))),
+        ]), False)
+        add_field(embed, "Kekkei", format_player_bloodlines(player), False)
+        add_field(embed, "Stats", "\n".join(f"**{k}:** {fmt_num(v)}" for k, v in (player.get("stats") or {}).items()) or "None", True)
+        add_field(embed, "Skills", "\n".join(f"**{k}:** {fmt_num(v)}" for k, v in (player.get("affinities") or {}).items()) or "None", True)
+        await ctx.send(embed=embed)
+
+
+
+@bot.command(name="progress", aliases=["progression", "mmorpg"])
+async def progress(ctx, member: discord.Member = None):
+    players = migrate_all_players(load_players())
+    member = member or ctx.author
+    player, user_id = resolve_player_record(players, member)
+
+    if not player:
+        await send_notice(ctx, "Profile Not Found", "That player does not have a profile yet.", "warning")
+        return
+
+    level = int(player.get("level", 1))
+    required_xp = get_required_xp(level)
+    current_xp = int(player.get("xp", 0))
+    rating = calculate_combat_rating(player) if player.get("has_rolled") else 0
+    profile = calculate_player_power_profile(player) if player.get("has_rolled") else {"raw": 0, "stat_power": 0, "affinity_power": 0, "level_power": 0, "bloodline_power": 0, "nature_power": 0}
+    build_name = get_player_role_name(player)
+    next_unlocks = get_next_unlock_text(player)
+
+    embed = ui_embed(
+        f"{member.name}'s MMORPG Progression",
+        f"**{build_name}** • Level **{level}** • **{format_power_tier(rating)}** • Rating **{fmt_num(rating)}**",
+        "info"
+    )
+    try:
+        embed.set_thumbnail(url=member.display_avatar.url)
+    except Exception:
+        pass
+
+    add_field(embed, "Level Track", "\n".join([
+        resource_line("XP", current_xp, required_xp),
+        kv_line("XP Needed", fmt_num(max(0, required_xp - current_xp))),
+        kv_line("Rank", player.get("rank", "Academy Student")),
+        kv_line("PvP Rating", fmt_num(player.get("pvp_rating", 1000))),
+        kv_line("Season Points", fmt_num(player.get("season_points", 0))),
+    ]), False)
+
+    add_field(embed, "Power Breakdown", "\n".join([
+        kv_line("Raw Power", fmt_num(profile.get("raw", 0))),
+        kv_line("Stats", fmt_num(profile.get("stat_power", 0))),
+        kv_line("Skills", fmt_num(profile.get("affinity_power", 0))),
+        kv_line("Level", fmt_num(profile.get("level_power", 0))),
+        kv_line("Bloodline", fmt_num(profile.get("bloodline_power", 0))),
+        kv_line("Nature", fmt_num(profile.get("nature_power", 0))),
+    ]), False)
+
+    add_field(embed, "MMORPG Systems", "\n".join([
+        kv_line("Build Role", build_name),
+        kv_line("Equipment", format_equipment_summary(player)),
+        kv_line("Profession", format_profession_summary(player)),
+        kv_line("Village", format_village_identity(player)),
+        kv_line("Next Unlocks", next_unlocks),
+    ]), False)
+
+    add_field(embed, "Pacing Rules", "\n".join([
+        "Rewards can only level you once per gain.",
+        "Training has fatigue after the daily soft cap.",
+        "Gear/roles/professions add horizontal progression without infinite stat inflation.",
+    ]), False)
+
     save_players(players)
-    await send_paginated_embeds(ctx, pages)
+    await ctx.send(embed=embed)
+
+
+
+
+# -----------------------------
+# v3.2 MMORPG Systems Layer
+# -----------------------------
+
+WORLD_BOSS_FILE = DATA_DIR / "world_boss.json"
+
+RAID_FILE = DATA_DIR / "raids.json"
+MARKET_V2_FILE = DATA_DIR / "market_v2.json"
+VILLAGE_POLITICS_FILE = DATA_DIR / "village_politics.json"
+
+ACTIVE_RAID_LOBBIES = {}
+
+
+def json_state_load(path, default):
+    if not path.exists():
+        json_state_save(path, default)
+        return default
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else default
+    except Exception:
+        json_state_save(path, default)
+        return default
+
+
+def json_state_save(path, state):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=4)
+    tmp.replace(path)
+
+
+def get_village_politics_config():
+    return CONFIG.get("VILLAGE_POLITICS", {})
+
+
+def get_market_v2_config():
+    return CONFIG.get("MARKET_V2", {})
+
+
+def get_cosmetics_config():
+    return CONFIG.get("COSMETICS", {})
+
+
+def load_market_v2():
+    return json_state_load(MARKET_V2_FILE, {"next_id": 1, "listings": {}, "history": []})
+
+
+def save_market_v2(state):
+    json_state_save(MARKET_V2_FILE, state)
+
+
+def load_village_politics():
+    state = json_state_load(VILLAGE_POLITICS_FILE, {"villages": {}, "elections": {}, "taxes": {}, "research": {}})
+    state.setdefault("villages", {})
+    state.setdefault("elections", {})
+    state.setdefault("taxes", {})
+    state.setdefault("research", {})
+    return state
+
+
+def save_village_politics(state):
+    json_state_save(VILLAGE_POLITICS_FILE, state)
+
+
+def get_equipment_passives(player):
+    total = {}
+    equip_items = get_equipment_config().get("items", {})
+    for item_name in (player.get("equipment") or {}).values():
+        item = equip_items.get(item_name, {})
+        for key, value in item.get("passives", {}).items():
+            try:
+                total[key] = float(total.get(key, 0)) + float(value)
+            except Exception:
+                pass
+    return total
+
+
+def format_passive_summary(passives):
+    if not passives:
+        return "No passive effects"
+    labels = {
+        "crit_chance": "Crit Chance",
+        "dodge_chance": "Dodge Chance",
+        "jutsu_damage": "Jutsu Damage",
+        "basic_damage": "Basic Damage",
+        "damage_reduction": "Damage Reduction",
+        "regen_percent": "Regen",
+        "chakra_refund": "Chakra Refund",
+        "world_boss_damage": "World Boss Damage",
+        "ryo_bonus": "Ryo Bonus",
+        "stun_chance": "Stun Chance",
+        "burn_chance": "Burn Chance",
+    }
+    lines = []
+    for key, value in sorted(passives.items()):
+        pct = f"{round(value * 100, 1)}%" if abs(value) < 10 else fmt_num(value)
+        lines.append(f"**{labels.get(key, key.replace('_', ' ').title())}:** +{pct}")
+    return "\n".join(lines)
+
+
+def get_rank_threshold_title(rating):
+    thresholds = get_season_config().get("rank_thresholds", {})
+    best_name = None
+    best_value = -1
+    for name, threshold in thresholds.items():
+        try:
+            threshold = int(threshold)
+        except Exception:
+            continue
+        if int(rating) >= threshold and threshold >= best_value:
+            best_name = name
+            best_value = threshold
+    return best_name or get_mmorpg_rank_title({"pvp_rating": rating})
+
+
+def ensure_player_cosmetics(player):
+    player.setdefault("titles", ["Rookie Shinobi"])
+    player.setdefault("active_title", player["titles"][0] if player["titles"] else None)
+    player.setdefault("pvp_rating", 1000)
+    player.setdefault("ranked_wins", 0)
+    player.setdefault("ranked_losses", 0)
+    return player
+
+
+def grant_title(player, title):
+    ensure_player_cosmetics(player)
+    if title and title not in player["titles"]:
+        player["titles"].append(title)
+        return True
+    return False
+
+
+def update_ranked_result(players, winner_id, loser_id):
+    cfg = get_season_config()
+    winner = players.get(str(winner_id))
+    loser = players.get(str(loser_id))
+    if not winner or not loser:
+        return None
+    ensure_player_cosmetics(winner)
+    ensure_player_cosmetics(loser)
+    gain = int(cfg.get("win_rating_gain", 24))
+    loss = int(cfg.get("loss_rating_loss", 16))
+    old_w = int(winner.get("pvp_rating", 1000))
+    old_l = int(loser.get("pvp_rating", 1000))
+    winner["pvp_rating"] = old_w + gain
+    loser["pvp_rating"] = max(100, old_l - loss)
+    winner["ranked_wins"] = int(winner.get("ranked_wins", 0)) + 1
+    loser["ranked_losses"] = int(loser.get("ranked_losses", 0)) + 1
+    add_xp(winner, int(cfg.get("participation_xp", 25)))
+    add_xp(loser, max(5, int(cfg.get("participation_xp", 25)) // 2))
+    w_title = get_rank_threshold_title(winner["pvp_rating"])
+    l_title = get_rank_threshold_title(loser["pvp_rating"])
+    grant_title(winner, w_title)
+    grant_title(loser, l_title)
+    return {
+        "winner_old": old_w,
+        "winner_new": winner["pvp_rating"],
+        "loser_old": old_l,
+        "loser_new": loser["pvp_rating"],
+        "winner_title": w_title,
+        "loser_title": l_title,
+    }
+
+
+def calculate_raid_role_score(member_ids, players):
+    roles = {}
+    for uid in member_ids:
+        player = players.get(str(uid), {})
+        role = get_player_role_key(player)
+        roles[role] = roles.get(role, 0) + 1
+    diversity_bonus = min(0.18, max(0, len(roles) - 1) * 0.045)
+    guardian_bonus = min(0.10, roles.get("guardian", 0) * 0.05)
+    medic_bonus = min(0.10, roles.get("medic", 0) * 0.05)
+    controller_bonus = min(0.08, roles.get("controller", 0) * 0.04)
+    return roles, diversity_bonus + guardian_bonus + medic_bonus + controller_bonus
+
+
+def get_raid_lobby_key(channel_id, raid_key):
+    return f"{channel_id}:{raid_key}"
+
+
+def get_next_market_v2_id(state):
+    listing_id = f"AUC-{int(state.get('next_id', 1)):05d}"
+    state["next_id"] = int(state.get("next_id", 1)) + 1
+    return listing_id
+
+
+def normalize_market_category(item_name):
+    if item_name in get_equipment_config().get("items", {}):
+        return "Equipment"
+    item = ITEMS.get(item_name, {})
+    effect = str(item.get("effect", "")).lower()
+    if "material" in effect:
+        return "Material"
+    if "jutsu" in effect or "bloodline" in effect:
+        return "Jutsu Utility"
+    if item.get("rarity") in ["Legendary", "Mythic"]:
+        return "Collectible"
+    return "Consumable"
+
+
+
+def get_role_config():
+    return CONFIG.get("MMORPG_ROLES", {})
+
+
+def get_equipment_config():
+    return CONFIG.get("EQUIPMENT", {})
+
+
+def get_profession_config():
+    return CONFIG.get("PROFESSIONS", {})
+
+
+def get_raid_config():
+    return CONFIG.get("RAIDS", {})
+
+
+def get_world_boss_config():
+    return CONFIG.get("WORLD_BOSS", {})
+
+
+def get_season_config():
+    return CONFIG.get("SEASONS", {})
+
+
+def get_player_role_key(player):
+    role = player.get("build_role")
+    roles = get_role_config()
+    if role in roles:
+        return role
+    clan = str(player.get("clan") or "").lower()
+    if "hyuga" in clan or "akimichi" in clan or "haku" in clan:
+        return "guardian"
+    if "uchiha" in clan or "kurama" in clan or "chinoike" in clan:
+        return "controller"
+    if "uzumaki" in clan or "senju" in clan:
+        return "medic"
+    if "hatake" in clan or "inuzuka" in clan or "raikage" in clan:
+        return "assassin"
+    return "striker"
+
+
+def get_player_role_name(player):
+    key = get_player_role_key(player)
+    return get_role_config().get(key, {}).get("name", key.title())
+
+
+def apply_mmorpg_trait_bonus(player):
+    """Applies role/equipment stat bonuses to a temporary copy."""
+    import copy
+    effective = copy.deepcopy(player)
+    effective.setdefault("stats", {})
+    effective.setdefault("affinities", {})
+
+    role = get_role_config().get(get_player_role_key(player), {})
+    apply_trait_delta(effective["stats"], role.get("stats", {}))
+    apply_trait_delta(effective["affinities"], role.get("skills", {}))
+
+    equip_items = get_equipment_config().get("items", {})
+    for item_name in (player.get("equipment") or {}).values():
+        item = equip_items.get(item_name, {})
+        apply_trait_delta(effective["stats"], item.get("stats", {}))
+        apply_trait_delta(effective["affinities"], item.get("skills", {}))
+
+    return effective
+
+
+def get_mmorpg_power_modifiers(player):
+    role = get_role_config().get(get_player_role_key(player), {})
+    multiplier = float(role.get("power_multiplier", 1.0))
+    flat_power = 0
+
+    equip_items = get_equipment_config().get("items", {})
+    for item_name in (player.get("equipment") or {}).values():
+        item = equip_items.get(item_name, {})
+        multiplier *= float(item.get("power_multiplier", 1.0))
+        flat_power += sum(int(v) for v in item.get("stats", {}).values()) * 3
+        flat_power += sum(int(v) for v in item.get("skills", {}).values()) * 0.35
+
+    prof_level = int(player.get("profession_level", 1) or 1)
+    flat_power += min(500, prof_level * 18)
+    flat_power += min(600, int(player.get("pvp_rating", 1000)) - 1000) * 0.12
+    return {"power_multiplier": multiplier, "flat_power": int(flat_power)}
+
+
+def find_equipment_item(search_text):
+    cleaned = str(search_text or "").lower().strip()
+    for name, data in get_equipment_config().get("items", {}).items():
+        if name.lower() == cleaned:
+            return name, data
+    for name, data in get_equipment_config().get("items", {}).items():
+        if cleaned and cleaned in name.lower():
+            return name, data
+    return None, None
+
+
+def format_equipment_summary(player):
+    equipped = player.get("equipment") or {}
+    if not equipped:
+        return "No gear equipped"
+    ordered = []
+    for slot in get_equipment_config().get("slots", []):
+        if slot in equipped:
+            ordered.append(f"{slot.title()}: {equipped[slot]}")
+    return "; ".join(ordered[:4]) + (f" +{len(ordered)-4} more" if len(ordered) > 4 else "")
+
+
+def format_profession_summary(player):
+    key = player.get("profession")
+    if not key:
+        return "None selected"
+    prof = get_profession_config().get("professions", {}).get(key, {})
+    return f"{prof.get('name', key.title())} Lv.{int(player.get('profession_level', 1))} ({fmt_num(player.get('profession_xp', 0))} XP)"
+
+
+
+def format_village_identity(player):
+    village_name = player.get("village")
+    if not village_name:
+        return "None"
+    try:
+        state = load_village_state()
+        data = state.get("villages", {}).get(village_name, {})
+        level = int(data.get("level", 0))
+        return f"{village_name} Lv.{level}/{get_village_max_level()}"
+    except Exception:
+        return village_name
+
+def get_next_unlock_text(player):
+    level = int(player.get("level", 1))
+    unlocks = []
+    for target, label in [(20, "2nd chakra nature"), (25, "B-Rank raid prep"), (35, "horizontal progression focus"), (40, "3rd chakra nature"), (60, "endgame raids"), (80, "prestige path")]:
+        if level < target:
+            unlocks.append(f"Lv.{target}: {label}")
+        if len(unlocks) >= 3:
+            break
+    return "; ".join(unlocks) if unlocks else "Endgame: raids, world boss, gear, seasons"
+
+
+def get_default_world_boss_state():
+    cfg = get_world_boss_config()
+    return {
+        "name": cfg.get("name", "World Boss"),
+        "hp": int(cfg.get("hp", 500000)),
+        "max_hp": int(cfg.get("hp", 500000)),
+        "started_at": now_utc().isoformat(),
+        "damage": {},
+        "active": True,
+    }
+
+
+def load_world_boss_state():
+    if not WORLD_BOSS_FILE.exists():
+        state = get_default_world_boss_state()
+        save_world_boss_state(state)
+        return state
+    try:
+        with open(WORLD_BOSS_FILE, "r", encoding="utf-8") as f:
+            state = json.load(f)
+    except Exception:
+        state = get_default_world_boss_state()
+        save_world_boss_state(state)
+    state.setdefault("damage", {})
+    state.setdefault("active", True)
+    return state
+
+
+def save_world_boss_state(state):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = WORLD_BOSS_FILE.with_suffix(".json.tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=4)
+    tmp.replace(WORLD_BOSS_FILE)
+
+
+def get_mmorpg_rank_title(player):
+    rating = int(player.get("pvp_rating", 1000))
+    titles = get_season_config().get("ranked_titles", [])
+    if rating >= 1800 and len(titles) >= 5:
+        return titles[4]
+    if rating >= 1550 and len(titles) >= 4:
+        return titles[3]
+    if rating >= 1300 and len(titles) >= 3:
+        return titles[2]
+    if rating >= 1100 and len(titles) >= 2:
+        return titles[1]
+    return titles[0] if titles else "Bronze Shinobi"
+
+
+@bot.command(name="build", aliases=["role", "class"])
+async def build_role(ctx, role_name: str = None):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players or not players[user_id].get("has_rolled"):
+        await send_notice(ctx, "Profile Required", "Use `$start` and `$roll` before choosing a build role.", "warning")
+        return
+    roles = get_role_config()
+    player = players[user_id]
+    if not role_name:
+        embed = ui_embed("Build Roles", "Choose a role with `$build [role]`.", "purple")
+        for key, data in roles.items():
+            add_field(embed, data.get("name", key.title()), f"`$build {key}` — {data.get('description', 'No description')}", False)
+        add_field(embed, "Current Role", get_player_role_name(player), False)
+        await ctx.send(embed=embed)
+        return
+    key = role_name.lower().strip()
+    if key not in roles:
+        await send_notice(ctx, "Unknown Role", "Use `$build` to see valid roles.", "warning")
+        return
+    player["build_role"] = key
+    player["hidden_skill_score"] = calculate_hidden_skill_score(player)
+    save_players(players)
+    embed = ui_embed("Build Role Updated", f"{ctx.author.mention} is now a **{roles[key].get('name', key.title())}**.", "success")
+    add_field(embed, "Role Identity", roles[key].get("description", "No description."), False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="equipment", aliases=["gear"])
+async def equipment(ctx, member: discord.Member = None):
+    players = migrate_all_players(load_players())
+    member = member or ctx.author
+    player, _ = resolve_player_record(players, member)
+    if not player:
+        await send_notice(ctx, "Profile Not Found", "That player does not have a profile yet.", "warning")
+        return
+    embed = ui_embed(f"{member.name}'s Equipment", format_equipment_summary(player), "info")
+    equipped = player.get("equipment") or {}
+    for slot in get_equipment_config().get("slots", []):
+        item = equipped.get(slot, "Empty")
+        add_field(embed, slot.title(), item, True)
+    add_field(embed, "Passive Effects", format_passive_summary(get_equipment_passives(player)), False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="equip")
+async def equip(ctx, *, item_name: str = None):
+    if not item_name:
+        await send_notice(ctx, "Equip Item", "Use `$equip [equipment item]`. Example: `$equip ANBU Mask`", "info")
+        return
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+    player = players[user_id]
+    matched, data = find_equipment_item(item_name)
+    if not matched:
+        await send_notice(ctx, "Not Equipment", "That item is not configured as equipment.", "warning")
+        return
+    owned_name = find_inventory_item(player, matched)
+    if not owned_name:
+        await send_notice(ctx, "Item Missing", f"You need **{matched}** in your inventory before equipping it.", "warning")
+        return
+    slot = data.get("slot")
+    player.setdefault("equipment", {})[slot] = matched
+    player["hidden_skill_score"] = calculate_hidden_skill_score(player)
+    save_players(players)
+    embed = ui_embed("Equipment Updated", f"Equipped **{matched}** in the **{slot}** slot.", "success")
+    add_field(embed, "Current Gear", format_equipment_summary(player), False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="professions", aliases=["profession"])
+async def professions(ctx, choice: str = None):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+    profs = get_profession_config().get("professions", {})
+    player = players[user_id]
+    if not choice:
+        embed = ui_embed("Professions", "Professions add non-combat progression and economy depth.", "info")
+        for key, data in profs.items():
+            add_field(embed, data.get("name", key.title()), f"`$profession {key}` • `$gather` — produces **{data.get('resource', 'materials')}**", False)
+        add_field(embed, "Current", format_profession_summary(player), False)
+        await ctx.send(embed=embed)
+        return
+    key = choice.lower().strip()
+    if key not in profs:
+        await send_notice(ctx, "Unknown Profession", "Use `$professions` to see valid options.", "warning")
+        return
+    player["profession"] = key
+    player.setdefault("profession_level", 1)
+    player.setdefault("profession_xp", 0)
+    save_players(players)
+    await send_notice(ctx, "Profession Selected", f"You are now a **{profs[key].get('name', key.title())}**. Use `$gather` to progress.", "success")
+
+
+@bot.command(name="gather", aliases=["work"])
+async def gather(ctx):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+    player = players[user_id]
+    key = player.get("profession")
+    if not key:
+        await send_notice(ctx, "No Profession", "Choose one with `$professions` first.", "warning")
+        return
+    cfg = get_profession_config()
+    prof = cfg.get("professions", {}).get(key)
+    if not prof:
+        await send_notice(ctx, "Profession Error", "Your profession is no longer configured.", "warning")
+        return
+    last = player.get("last_profession")
+    cooldown = timedelta(minutes=int(cfg.get("cooldown_minutes", 45)))
+    if last:
+        try:
+            last_dt = datetime.fromisoformat(last)
+            if now_utc() < last_dt + cooldown:
+                await send_notice(ctx, "Profession Cooldown", f"Try again in **{format_cooldown((last_dt + cooldown) - now_utc())}**.", "warning")
+                return
+        except Exception:
+            pass
+    xp = random.randint(int(prof.get("xp_min", 5)), int(prof.get("xp_max", 12)))
+    ryo = random.randint(int(prof.get("ryo_min", 5)), int(prof.get("ryo_max", 14)))
+    player["profession_xp"] = int(player.get("profession_xp", 0)) + xp
+    player["ryo"] = int(player.get("ryo", 0)) + ryo
+    player["last_profession"] = now_utc().isoformat()
+    if player["profession_xp"] >= int(player.get("profession_level", 1)) * 100:
+        player["profession_xp"] = 0
+        player["profession_level"] = int(player.get("profession_level", 1)) + 1
+    item = None
+    if random.randint(1, 100) <= 18:
+        pool = prof.get("items") or []
+        if pool:
+            item = random.choice(pool)
+            add_item(player, item)
+    save_players(players)
+    embed = ui_embed("Profession Work Complete", f"You gathered **{prof.get('resource', 'materials')}**.", "success")
+    lines = [kv_line("Profession", format_profession_summary(player)), kv_line("XP", f"+{xp}"), kv_line("Ryo", f"+{ryo}")]
+    if item:
+        lines.append(kv_line("Bonus Item", item))
+    add_field(embed, "Results", "\n".join(lines), False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="raid")
+async def raid(ctx, action: str = None, *, raid_name: str = None):
+    """Deep raid system: start, join, status, attack, leave."""
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players or not players[user_id].get("has_rolled"):
+        await send_notice(ctx, "Profile Required", "Use `$start` and `$roll` before raiding.", "warning")
+        return
+
+    raids = get_raid_config().get("raids", {})
+    action = (action or "list").lower().strip()
+
+    if action in ["list", "help"]:
+        embed = ui_embed("Raid Finder", "Use `$raid start [raid]`, then others can use `$raid join`. Use `$raid attack` to resolve active raid phases.", "danger")
+        for key, data in raids.items():
+            phase_names = ", ".join(p.get("name", "Phase") for p in data.get("phases", []))
+            add_field(embed, data.get("name", key), f"`$raid start {key}` • Lv.{data.get('level', 1)} • Party {data.get('recommended_players', 3)} • Power {fmt_num(data.get('power', 0))}\nPhases: {phase_names or 'Boss Fight'}", False)
+        await ctx.send(embed=embed)
+        return
+
+    # Find existing lobby in this channel if raid name omitted.
+    existing_key = None
+    for lobby_key, lobby in ACTIVE_RAID_LOBBIES.items():
+        if lobby.get("channel_id") == ctx.channel.id and lobby.get("status") in ["forming", "active"]:
+            existing_key = lobby_key
+            break
+
+    if action == "start":
+        key = (raid_name or "").lower().strip().replace(" ", "_")
+        raid_data = raids.get(key)
+        if not raid_data:
+            await send_notice(ctx, "Raid Not Found", "Use `$raid list` to see available raids.", "warning")
+            return
+        player = players[user_id]
+        if int(player.get("level", 1)) < int(raid_data.get("level", 1)):
+            await send_notice(ctx, "Raid Locked", f"This raid requires level **{raid_data.get('level', 1)}**.", "warning")
+            return
+        lobby_key = get_raid_lobby_key(ctx.channel.id, key)
+        if lobby_key in ACTIVE_RAID_LOBBIES:
+            await send_notice(ctx, "Raid Already Forming", "That raid already has a lobby in this channel.", "warning")
+            return
+        ACTIVE_RAID_LOBBIES[lobby_key] = {
+            "channel_id": ctx.channel.id,
+            "raid_key": key,
+            "leader": user_id,
+            "members": [user_id],
+            "status": "forming",
+            "phase": 0,
+            "boss_hp": int(raid_data.get("boss_hp", raid_data.get("power", 10000) * 3)),
+            "max_boss_hp": int(raid_data.get("boss_hp", raid_data.get("power", 10000) * 3)),
+            "started_at": now_utc().isoformat(),
+            "log": []
+        }
+        embed = ui_embed("Raid Lobby Created", f"{ctx.author.mention} started **{raid_data.get('name', key)}**.", "danger")
+        add_field(embed, "Join", "Use `$raid join` to enter. Leader uses `$raid attack` to begin phase combat.", False)
+        add_field(embed, "Party", ctx.author.mention, False)
+        await ctx.send(embed=embed)
+        return
+
+    if not existing_key:
+        await send_notice(ctx, "No Active Raid", "Start one with `$raid start [raid]`.", "warning")
+        return
+
+    lobby = ACTIVE_RAID_LOBBIES[existing_key]
+    raid_data = raids.get(lobby["raid_key"], {})
+
+    if action == "join":
+        limit = int(get_raid_config().get("party_size_limit", 5))
+        if user_id in lobby["members"]:
+            await send_notice(ctx, "Already Joined", "You are already in this raid.", "info")
+            return
+        if len(lobby["members"]) >= limit:
+            await send_notice(ctx, "Raid Full", f"This raid is capped at **{limit}** players.", "warning")
+            return
+        if int(players[user_id].get("level", 1)) < int(raid_data.get("level", 1)):
+            await send_notice(ctx, "Raid Locked", f"This raid requires level **{raid_data.get('level', 1)}**.", "warning")
+            return
+        lobby["members"].append(user_id)
+        await send_notice(ctx, "Joined Raid", f"{ctx.author.mention} joined **{raid_data.get('name', lobby['raid_key'])}**. Party: **{len(lobby['members'])}**", "success")
+        return
+
+    if action == "leave":
+        if user_id in lobby["members"]:
+            lobby["members"].remove(user_id)
+        if not lobby["members"]:
+            del ACTIVE_RAID_LOBBIES[existing_key]
+        await send_notice(ctx, "Left Raid", "You left the current raid lobby.", "info")
+        return
+
+    if action == "status":
+        roles, bonus = calculate_raid_role_score(lobby["members"], players)
+        embed = ui_embed("Raid Status", f"**{raid_data.get('name', lobby['raid_key'])}**", "danger")
+        add_field(embed, "Boss HP", resource_line("HP", lobby["boss_hp"], lobby["max_boss_hp"]), False)
+        add_field(embed, "Party", "\n".join(f"<@{uid}> — {get_player_role_name(players.get(uid, {}))}" for uid in lobby["members"]), False)
+        add_field(embed, "Role Bonus", f"+{round(bonus * 100, 1)}% success efficiency | Roles: {', '.join(f'{k} x{v}' for k,v in roles.items())}", False)
+        await ctx.send(embed=embed)
+        return
+
+    if action != "attack":
+        await send_notice(ctx, "Raid Commands", "Use `$raid list`, `$raid start [raid]`, `$raid join`, `$raid status`, `$raid attack`, or `$raid leave`.", "info")
+        return
+
+    if user_id != lobby.get("leader"):
+        await send_notice(ctx, "Leader Only", "Only the raid leader can advance raid phases with `$raid attack`.", "warning")
+        return
+
+    members = [uid for uid in lobby["members"] if uid in players]
+    roles, role_bonus = calculate_raid_role_score(members, players)
+    party_power = sum(calculate_combat_rating(players[uid]) for uid in members)
+    required = max(1, int(raid_data.get("power", 10000)))
+    phase_index = int(lobby.get("phase", 0))
+    phases = raid_data.get("phases", []) or [{"name": "Boss Fight", "mechanic": "Deal enough damage to clear the raid."}]
+    phase = phases[min(phase_index, len(phases)-1)]
+    chance = clamp(0.30 + ((party_power - required) / required) * 0.30 + role_bonus, 0.10, 0.88)
+    phase_success = random.random() <= chance
+    damage = max(500, int(party_power * random.uniform(0.25, 0.45) * (1 + role_bonus)))
+    if not phase_success:
+        damage = int(damage * 0.35)
+    lobby["boss_hp"] = max(0, int(lobby["boss_hp"]) - damage)
+    lobby["log"].append({"phase": phase.get("name"), "damage": damage, "success": phase_success, "at": now_utc().isoformat()})
+
+    embed = ui_embed("Raid Phase Result", f"**{phase.get('name', 'Phase')}** — {phase.get('mechanic', '')}", "success" if phase_success else "warning")
+    add_field(embed, "Phase Check", "\n".join([kv_line("Chance", format_percent(chance)), kv_line("Party Power", fmt_num(party_power)), kv_line("Required Power", fmt_num(required)), kv_line("Damage", fmt_num(damage))]), False)
+    add_field(embed, "Boss HP", resource_line("HP", lobby["boss_hp"], lobby["max_boss_hp"]), False)
+
+    if lobby["boss_hp"] <= 0 or phase_index >= len(phases)-1:
+        win = lobby["boss_hp"] <= 0 or phase_success
+        reward_lines = []
+        for uid in members:
+            p = players[uid]
+            base_xp = random.randint(int(raid_data.get("xp_min", 100)), int(raid_data.get("xp_max", 200)))
+            base_ryo = random.randint(int(raid_data.get("ryo_min", 100)), int(raid_data.get("ryo_max", 300)))
+            if not win:
+                base_xp = max(10, int(base_xp * 0.30)); base_ryo = max(5, int(base_ryo * 0.25))
+            add_xp(p, base_xp)
+            p["ryo"] = int(p.get("ryo", 0)) + base_ryo
+            p["raids_cleared"] = int(p.get("raids_cleared", 0)) + (1 if win else 0)
+            if win:
+                grant_title(p, "Raid Breaker")
+            drop = None
+            if win and random.randint(1,100) <= 45:
+                drop = random.choice(raid_data.get("items", [])) if raid_data.get("items") else None
+                if drop:
+                    add_item(p, drop)
+            reward_lines.append(f"<@{uid}> +{fmt_num(base_xp)} XP, +{fmt_num(base_ryo)} Ryo" + (f", drop: **{drop}**" if drop else ""))
+        del ACTIVE_RAID_LOBBIES[existing_key]
+        save_players(players)
+        add_field(embed, "Raid Complete" if win else "Raid Failed", "\n".join(reward_lines), False)
+    else:
+        lobby["phase"] = phase_index + 1
+        add_field(embed, "Next Phase", phases[min(lobby["phase"], len(phases)-1)].get("name", "Final Phase"), False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="worldboss", aliases=["boss"])
+async def worldboss(ctx, action: str = None):
+    players = migrate_all_players(load_players())
+    state = load_world_boss_state()
+    cfg = get_world_boss_config()
+    if action and action.lower() == "reset" and ctx.author.id in DEV_USER_IDS:
+        state = get_default_world_boss_state()
+        save_world_boss_state(state)
+    if not action or action.lower() in ["status", "reset"]:
+        embed = ui_embed("World Boss", f"**{state.get('name')}** is active.", "danger")
+        add_field(embed, "Health", resource_line("HP", int(state.get("hp", 0)), int(state.get("max_hp", cfg.get("hp", 1)))), False)
+        top = sorted(state.get("damage", {}).items(), key=lambda x: int(x[1]), reverse=True)[:5]
+        add_field(embed, "Top Damage", "\n".join(f"<@{uid}> — {fmt_num(dmg)}" for uid, dmg in top) or "No damage yet.", False)
+        add_field(embed, "Attack", "Use `$worldboss attack` every cooldown window to contribute damage.", False)
+        await ctx.send(embed=embed)
+        return
+    if action.lower() != "attack":
+        await send_notice(ctx, "World Boss", "Use `$worldboss`, `$worldboss attack`, or `$worldboss reset` as a developer.", "info")
+        return
+    user_id = str(ctx.author.id)
+    if user_id not in players or not players[user_id].get("has_rolled"):
+        await send_notice(ctx, "Profile Required", "Use `$start` and `$roll` before fighting the world boss.", "warning")
+        return
+    player = players[user_id]
+    last_key = "last_world_boss_attack"
+    last = player.get(last_key)
+    cooldown = timedelta(minutes=int(cfg.get("attack_cooldown_minutes", 30)))
+    if last:
+        try:
+            last_dt = datetime.fromisoformat(last)
+            if now_utc() < last_dt + cooldown:
+                await send_notice(ctx, "World Boss Cooldown", f"Attack again in **{format_cooldown((last_dt + cooldown) - now_utc())}**.", "warning")
+                return
+        except Exception:
+            pass
+    boss_bonus = get_equipment_passives(player).get("world_boss_damage", 0) if "get_equipment_passives" in globals() else 0
+    damage = max(25, int(calculate_combat_rating(player) * random.uniform(0.055, 0.095) * (1 + boss_bonus)))
+    state["hp"] = max(0, int(state.get("hp", 0)) - damage)
+    state.setdefault("damage", {})[user_id] = int(state.setdefault("damage", {}).get(user_id, 0)) + damage
+    player["world_boss_damage"] = int(player.get("world_boss_damage", 0)) + damage
+    player[last_key] = now_utc().isoformat()
+    add_xp(player, int(cfg.get("base_reward_xp", 80)))
+    defeated = state["hp"] <= 0
+    if defeated:
+        state["active"] = False
+        top = sorted(state.get("damage", {}).items(), key=lambda x: int(x[1]), reverse=True)
+        if top:
+            top_id = top[0][0]
+            if top_id in players:
+                add_xp(players[top_id], int(cfg.get("top_reward_xp", 300)))
+                pool = cfg.get("top_reward_items", [])
+                if pool:
+                    add_item(players[top_id], random.choice(pool))
+    save_players(players)
+    save_world_boss_state(state)
+    embed = ui_embed("World Boss Attack", f"{ctx.author.mention} dealt **{fmt_num(damage)}** damage to **{state.get('name')}**.", "danger")
+    add_field(embed, "Boss HP", resource_line("HP", int(state.get("hp", 0)), int(state.get("max_hp", 1))), False)
+    if defeated:
+        add_field(embed, "Boss Defeated", "The world boss has been defeated. Developers can use `$worldboss reset` to start a new cycle.", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="season")
+async def season(ctx):
+    cfg = get_season_config()
+    embed = ui_embed("Season Status", f"**{cfg.get('current', 'Current Season')}**", "gold")
+    add_field(embed, "Reset Style", "Ladder and seasonal points reset; character progression remains intact." if cfg.get("soft_reset_ladder_only", True) else "Full seasonal reset configured.", False)
+    add_field(embed, "Ranked Titles", "\n".join(cfg.get("ranked_titles", [])) or "No titles configured.", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="villagehub", aliases=["vhub"])
+async def villagehub(ctx):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+    player = players[user_id]
+    village_name, village_data = get_village_state_for_player(player)
+    if not village_name or not village_data:
+        await send_notice(ctx, "No Village", "Join a village first.", "warning")
+        return
+    cfg = get_village_expansion_config()
+    embed = ui_embed("Village Hub", f"**{village_name}**", "brand")
+    add_field(embed, "Village Progress", "\n".join([
+        kv_line("Level", f"{village_data.get('level', 0)}/{get_village_max_level()}"),
+        kv_line("Fund", f"{fmt_num(village_data.get('fund', 0))} Ryo"),
+        kv_line("Power", fmt_num(village_data.get('power_level', 0))),
+        kv_line("War Record", f"{village_data.get('war_wins', 0)}W / {village_data.get('war_losses', 0)}L"),
+    ]), False)
+    add_field(embed, "Research Projects", "\n".join(f"• {x}" for x in cfg.get("research_projects", [])) or "No projects configured.", False)
+    add_field(embed, "Village Identity", CONFIG.get("VILLAGES", {}).get(village_name, {}).get("description", "No description."), False)
+    await ctx.send(embed=embed)
+
+
+
+@bot.command(name="ranked", aliases=["pvpseason", "elo"])
+async def ranked(ctx, member: discord.Member = None):
+    players = migrate_all_players(load_players())
+    if member:
+        target = member
+    else:
+        target = ctx.author
+    player, _ = resolve_player_record(players, target)
+    if not player:
+        await send_notice(ctx, "Profile Not Found", "That player does not have a profile yet.", "warning")
+        return
+    ensure_player_cosmetics(player)
+    rating = int(player.get("pvp_rating", 1000))
+    embed = ui_embed(f"{target.name}'s Ranked Profile", f"**{get_season_config().get('current', 'Current Season')}**", "gold")
+    add_field(embed, "Rating", "\n".join([
+        kv_line("Rating", fmt_num(rating)),
+        kv_line("Rank", get_rank_threshold_title(rating)),
+        kv_line("Record", f"{player.get('ranked_wins', 0)}W / {player.get('ranked_losses', 0)}L"),
+    ]), False)
+    add_field(embed, "How It Works", "Winning normal duels now updates ranked rating, grants seasonal titles, and gives small participation XP.", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="titles", aliases=["cosmetics"])
+async def titles(ctx, member: discord.Member = None):
+    players = migrate_all_players(load_players())
+    member = member or ctx.author
+    player, _ = resolve_player_record(players, member)
+    if not player:
+        await send_notice(ctx, "Profile Not Found", "That player does not have a profile yet.", "warning")
+        return
+    ensure_player_cosmetics(player)
+    available = player.get("titles", [])
+    embed = ui_embed(f"{member.name}'s Titles", f"Active: **{player.get('active_title') or 'None'}**", "purple")
+    add_field(embed, "Owned Titles", "\n".join(f"• {title}" for title in available) or "None", False)
+    add_field(embed, "Set Title", "Use `$title [title name]` to display one on your profile.", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="title")
+async def title(ctx, *, title_name: str = None):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+    player = players[user_id]
+    ensure_player_cosmetics(player)
+    if not title_name:
+        await send_notice(ctx, "Set Title", "Use `$titles` to view owned titles, then `$title [name]`.", "info")
+        return
+    matched = None
+    for owned in player.get("titles", []):
+        if owned.lower() == title_name.lower().strip() or title_name.lower().strip() in owned.lower():
+            matched = owned
+            break
+    if not matched:
+        await send_notice(ctx, "Title Locked", "You do not own that title yet.", "warning")
+        return
+    player["active_title"] = matched
+    save_players(players)
+    await send_notice(ctx, "Title Updated", f"Your active title is now **{matched}**.", "success")
+
+
+@bot.command(name="villageelect", aliases=["election"])
+async def villageelect(ctx, action: str = None, member: discord.Member = None):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+    player = players[user_id]
+    village = player.get("village")
+    if not village:
+        await send_notice(ctx, "No Village", "Join a village before using village elections.", "warning")
+        return
+    state = load_village_politics()
+    action = (action or "status").lower()
+    elections = state.setdefault("elections", {})
+    election = elections.setdefault(village, {"candidates": {}, "votes": {}, "started_at": now_utc().isoformat(), "active": True})
+    if action == "run":
+        election.setdefault("candidates", {})[user_id] = ctx.author.name
+        save_village_politics(state)
+        await send_notice(ctx, "Campaign Started", f"{ctx.author.mention} is now running for **{village} Kage**. Vote with `$villageelect vote @user`.", "success")
+        return
+    if action == "vote":
+        if not member:
+            await send_notice(ctx, "Vote Missing", "Use `$villageelect vote @candidate`.", "warning")
+            return
+        target_id = str(member.id)
+        if target_id not in election.get("candidates", {}):
+            await send_notice(ctx, "Candidate Missing", "That player is not running for Kage.", "warning")
+            return
+        election.setdefault("votes", {})[user_id] = target_id
+        save_village_politics(state)
+        await send_notice(ctx, "Vote Counted", f"You voted for {member.mention} as **{village} Kage**.", "success")
+        return
+    if action == "resolve":
+        if ctx.author.id not in DEV_USER_IDS:
+            await send_notice(ctx, "Developer Only", "Only developers can resolve elections manually for now.", "danger")
+            return
+        tally = {}
+        for voted_id in election.get("votes", {}).values():
+            tally[voted_id] = tally.get(voted_id, 0) + 1
+        if not tally:
+            await send_notice(ctx, "No Votes", "No votes were cast.", "warning")
+            return
+        winner_id = max(tally.items(), key=lambda x: x[1])[0]
+        state.setdefault("villages", {}).setdefault(village, {})["kage_id"] = winner_id
+        election["active"] = False
+        save_village_politics(state)
+        await send_notice(ctx, "Election Resolved", f"<@{winner_id}> is now **{village} Kage**.", "gold")
+        return
+    candidates = election.get("candidates", {})
+    votes = election.get("votes", {})
+    embed = ui_embed("Village Election", f"**{village}**", "gold")
+    add_field(embed, "Candidates", "\n".join(f"<@{uid}> — {sum(1 for v in votes.values() if v == uid)} votes" for uid in candidates) or "No candidates yet. Use `$villageelect run`.", False)
+    add_field(embed, "Commands", "`$villageelect run` • `$villageelect vote @user` • `$villageelect status`", False)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="villagetax")
+async def villagetax(ctx, percent: int = None):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    player = players.get(user_id)
+    if not player or not player.get("village"):
+        await send_notice(ctx, "No Village", "Join a village first.", "warning")
+        return
+    village = player.get("village")
+    state = load_village_politics()
+    kage_id = state.setdefault("villages", {}).setdefault(village, {}).get("kage_id")
+    if str(kage_id) != user_id and ctx.author.id not in DEV_USER_IDS:
+        await send_notice(ctx, "Kage Only", "Only the village Kage can set village tax.", "danger")
+        return
+    if percent is None:
+        current = int(state.setdefault("taxes", {}).get(village, 0))
+        await send_notice(ctx, "Village Tax", f"Current tax for **{village}** is **{current}%**.", "info")
+        return
+    cfg = get_village_politics_config()
+    percent = max(int(cfg.get("tax_min_percent", 0)), min(int(cfg.get("tax_max_percent", 15)), int(percent)))
+    state.setdefault("taxes", {})[village] = percent
+    save_village_politics(state)
+    await send_notice(ctx, "Village Tax Updated", f"**{village}** tax is now **{percent}%**.", "success")
+
+
+@bot.command(name="villageresearch", aliases=["research"])
+async def villageresearch(ctx, project_key: str = None):
+    players = migrate_all_players(load_players())
+    user_id = str(ctx.author.id)
+    player = players.get(user_id)
+    if not player or not player.get("village"):
+        await send_notice(ctx, "No Village", "Join a village first.", "warning")
+        return
+    village = player.get("village")
+    state = load_village_politics()
+    projects = get_village_politics_config().get("research", {})
+    completed = state.setdefault("research", {}).setdefault(village, [])
+    if not project_key:
+        embed = ui_embed("Village Research", f"**{village}**", "brand")
+        for key, data in projects.items():
+            status = "Complete" if key in completed else f"Cost {fmt_num(data.get('cost', 0))} village fund"
+            add_field(embed, data.get("name", key), f"`$villageresearch {key}` — {status}\n{data.get('description', '')}", False)
+        await ctx.send(embed=embed)
+        return
+    if project_key not in projects:
+        await send_notice(ctx, "Unknown Research", "Use `$villageresearch` to see projects.", "warning")
+        return
+    if project_key in completed:
+        await send_notice(ctx, "Already Complete", "Your village already has that research.", "info")
+        return
+    village_state = load_village_state()
+    vdata = village_state.get("villages", {}).get(village, {})
+    cost = int(projects[project_key].get("cost", 0))
+    if int(vdata.get("fund", 0)) < cost:
+        await send_notice(ctx, "Not Enough Village Fund", f"This project costs **{fmt_num(cost)} Ryo** from the village fund.", "warning")
+        return
+    vdata["fund"] = int(vdata.get("fund", 0)) - cost
+    completed.append(project_key)
+    save_village_state(village_state)
+    save_village_politics(state)
+    await send_notice(ctx, "Research Complete", f"**{projects[project_key].get('name', project_key)}** has been unlocked for **{village}**.", "success")
+
+
+@bot.command(name="auction", aliases=["market2", "ah"])
+async def auction(ctx, action: str = None, *, args: str = None):
+    players = migrate_all_players(load_players())
+    state = load_market_v2()
+    action = (action or "list").lower().strip()
+    user_id = str(ctx.author.id)
+    if action == "list":
+        listings = list(state.get("listings", {}).items())
+        embed = ui_embed("Auction House", "Use `$auction sell item | price | qty`, `$auction buy AUC-00001`, or `$auction search equipment`.", "gold")
+        if not listings:
+            add_field(embed, "Listings", "No active listings.", False)
+        for listing_id, listing in listings[:10]:
+            add_field(embed, listing_id, f"**{listing.get('item')}** x{listing.get('qty', 1)} • {fmt_num(listing.get('price', 0))} Ryo • {listing.get('category', 'Item')} • Seller <@{listing.get('seller_id')}>", False)
+        await ctx.send(embed=embed)
+        return
+    if action == "search":
+        needle = str(args or "").lower().strip()
+        matches = [(lid,l) for lid,l in state.get("listings", {}).items() if needle in str(l.get("item","")).lower() or needle in str(l.get("category","")).lower()]
+        embed = ui_embed("Auction Search", f"Search: **{needle or 'all'}**", "gold")
+        for listing_id, listing in matches[:10]:
+            add_field(embed, listing_id, f"**{listing.get('item')}** x{listing.get('qty', 1)} • {fmt_num(listing.get('price', 0))} Ryo • {listing.get('category', 'Item')}", False)
+        if not matches:
+            add_field(embed, "No Results", "Nothing matched your search.", False)
+        await ctx.send(embed=embed)
+        return
+    if user_id not in players:
+        await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
+        return
+    player = players[user_id]
+    if action == "sell":
+        # Format: item | price | qty
+        parts = [p.strip() for p in str(args or "").split("|")]
+        if len(parts) < 2:
+            await send_notice(ctx, "Sell Format", "Use `$auction sell item name | price | qty`.", "warning")
+            return
+        item_search = parts[0]
+        price = int(parts[1]) if parts[1].isdigit() else 0
+        qty = int(parts[2]) if len(parts) >= 3 and parts[2].isdigit() else 1
+        max_price = int(get_market_v2_config().get("max_price", 1000000))
+        price = max(1, min(max_price, price))
+        item_name = find_inventory_item(player, item_search)
+        if not item_name or int(player.get("inventory", {}).get(item_name, 0)) < qty:
+            await send_notice(ctx, "Item Missing", "You do not have enough of that item.", "warning")
+            return
+        remove_item(player, item_name, qty)
+        listing_id = get_next_market_v2_id(state)
+        state.setdefault("listings", {})[listing_id] = {"seller_id": user_id, "item": item_name, "qty": qty, "price": price, "category": normalize_market_category(item_name), "created_at": now_utc().isoformat()}
+        save_players(players); save_market_v2(state)
+        await send_notice(ctx, "Auction Listed", f"Listed **{item_name} x{qty}** for **{fmt_num(price)} Ryo** as `{listing_id}`.", "success")
+        return
+    if action == "buy":
+        listing_id = str(args or "").strip().upper()
+        listing = state.get("listings", {}).get(listing_id)
+        if not listing:
+            await send_notice(ctx, "Listing Missing", "That auction listing does not exist.", "warning")
+            return
+        price = int(listing.get("price", 0))
+        if int(player.get("ryo", 0)) < price:
+            await send_notice(ctx, "Not Enough Ryo", f"You need **{fmt_num(price)} Ryo**.", "warning")
+            return
+        seller = players.get(str(listing.get("seller_id")))
+        tax = int(price * (float(get_market_v2_config().get("listing_tax_percent", 4)) / 100))
+        player["ryo"] = int(player.get("ryo", 0)) - price
+        add_item(player, listing.get("item"), int(listing.get("qty", 1)))
+        if seller:
+            seller["ryo"] = int(seller.get("ryo", 0)) + max(0, price - tax)
+            grant_title(seller, "Market Mogul")
+        grant_title(player, "Market Mogul")
+        state.setdefault("history", []).append({"listing_id": listing_id, "buyer_id": user_id, **listing, "sold_at": now_utc().isoformat(), "tax": tax})
+        del state["listings"][listing_id]
+        save_players(players); save_market_v2(state)
+        await send_notice(ctx, "Auction Purchased", f"Bought **{listing.get('item')} x{listing.get('qty', 1)}** for **{fmt_num(price)} Ryo**. Market tax: **{fmt_num(tax)}**.", "success")
+        return
+    if action == "cancel":
+        listing_id = str(args or "").strip().upper()
+        listing = state.get("listings", {}).get(listing_id)
+        if not listing:
+            await send_notice(ctx, "Listing Missing", "That auction listing does not exist.", "warning")
+            return
+        if str(listing.get("seller_id")) != user_id and ctx.author.id not in DEV_USER_IDS:
+            await send_notice(ctx, "Not Your Listing", "You can only cancel your own listings.", "danger")
+            return
+        add_item(player, listing.get("item"), int(listing.get("qty", 1)))
+        del state["listings"][listing_id]
+        save_players(players); save_market_v2(state)
+        await send_notice(ctx, "Auction Cancelled", f"Returned **{listing.get('item')} x{listing.get('qty', 1)}** to your inventory.", "success")
+        return
+    await send_notice(ctx, "Auction Commands", "Use `$auction list`, `$auction sell item | price | qty`, `$auction buy AUC-ID`, `$auction search text`, or `$auction cancel AUC-ID`.", "info")
+
 
 
 @bot.command(name="compare")
@@ -4386,8 +5636,8 @@ async def compare(ctx, member: discord.Member):
     await ctx.send(embed=embed)
 
 
-@bot.command(name="build")
-async def build(ctx, member: discord.Member = None):
+@bot.command(name="buildanalysis", aliases=["analysis", "buildinfo"])
+async def build_analysis(ctx, member: discord.Member = None):
     players = migrate_all_players(load_players())
     member = member or ctx.author
     player, user_id = resolve_player_record(players, member)
@@ -4524,10 +5774,14 @@ async def train(ctx, *, stat_name: str = None):
 
     training_config = CONFIG.get("TRAINING", {})
     economy_config = CONFIG.get("ECONOMY", {})
-    xp_gained = random.randint(training_config.get("xp_min", 25), training_config.get("xp_max", 75))
-    xp_gained += get_village_training_xp_bonus(player)
-    ryo_gained = random.randint(economy_config.get("training_ryo_min", 15), economy_config.get("training_ryo_max", 45))
-    stat_gain = random.randint(training_config.get("stat_gain_min", 1), training_config.get("stat_gain_max", 5))
+    fatigue_multiplier = get_training_fatigue_multiplier(player)
+    base_xp = random.randint(training_config.get("xp_min", 10), training_config.get("xp_max", 28))
+    xp_gained = int((base_xp + get_village_training_xp_bonus(player)) * fatigue_multiplier)
+    xp_gained = max(1, xp_gained)
+    ryo_gained = random.randint(economy_config.get("training_ryo_min", 8), economy_config.get("training_ryo_max", 22))
+    stat_gain = random.randint(training_config.get("stat_gain_min", 1), training_config.get("stat_gain_max", 2))
+    if fatigue_multiplier < 1:
+        stat_gain = max(1, int(stat_gain * fatigue_multiplier))
 
     focused_stat = resolve_training_stat_name(stat_name)
     if stat_name and not focused_stat:
@@ -4541,6 +5795,7 @@ async def train(ctx, *, stat_name: str = None):
 
     player["stats"][chosen_stat] += stat_gain
     player["last_training"] = now_utc().isoformat()
+    sessions_today = increment_training_session(player)
     player["ryo"] = int(player.get("ryo", 0)) + ryo_gained
 
     leveled_up, levels_gained = add_xp(player, xp_gained)
@@ -4583,6 +5838,7 @@ async def train(ctx, *, stat_name: str = None):
         kv_line("XP Gained", f"+{fmt_num(xp_gained)}"),
         kv_line("Ryo Gained", f"+{fmt_num(ryo_gained)} Ryo"),
         kv_line("Stat Improved", f"{chosen_stat} +{fmt_num(stat_gain)}"),
+        kv_line("Training Pace", f"Session {sessions_today} today • {int(fatigue_multiplier * 100)}% efficiency"),
     ]), False)
     bonus_lines = []
     if item_found:
@@ -7508,40 +8764,323 @@ async def mission_command(ctx, *, mission_name: str = None):
     save_players(players)
     await ctx.send(embed=embed)
 
-@bot.command(name="help")
-async def help_command(ctx):
-    pages = []
+@bot.command(name="help", aliases=["commands", "cmds"])
+async def help_command(ctx, topic: str = None):
+    """Clean MMORPG-style public help center with category pages and topic pages."""
 
-    page = ui_embed("Laentaru Help — Start & Profile", "Public commands only. Developer commands and private commands are hidden.", "brand")
-    add_field(page, "Start", "`$start` — create profile\n`$roll` — roll clan, stats, natures, bloodline\n`$reroll` — reroll if you have rerolls left\n`$profile [user]` — view your/another profile", False)
-    add_field(page, "Build Info", "`$compare @user` — compare builds\n`$build` — strengths/weaknesses\n`$stats` — combat formulas\n`$rank` — your rank card\n`$ladder` — public leaderboard\n`$balance` — ryo balance", False)
-    pages.append(page)
+    def make_page(title, description, tone="brand"):
+        page = ui_embed(title, description, tone)
+        page.set_footer(text=f"Laentaru Bot v{BOT_VERSION} • $help [category] • ⬅️ ➡️ ⏹️")
+        return page
 
-    page = ui_embed("Laentaru Help — Progression", "Train, earn, collect, and grow your shinobi.", "success")
-    add_field(page, "Training & Rewards", "`$train [stat]` — train generally or focus a stat\n`$cooldowns` — view timers\n`$daily` — claim daily reward\n`$weekly` — claim weekly reward\n`$streak` — view streaks\n`$missions` — mission board\n`$mission <name>` — run a mission", False)
-    add_field(page, "Inventory", "`$inventory` — view items\n`$items` — item registry\n`$iteminfo <item>` — item description/use cases\n`$use <item> [qty]` — use item(s)", False)
-    pages.append(page)
+    def command_block(entries):
+        return "\n".join(f"`{cmd}` — {desc}" for cmd, desc in entries)
 
-    page = ui_embed("Laentaru Help — Combat & Jutsu", "Turn-based PvP and jutsu commands.", "danger")
-    add_field(page, "Dueling", "`$duel @user` — challenge player\n`$accept` / `$deny` — respond to duel\n`$attack` — basic attack\n`$heavy` — stronger, less accurate hit\n`$taijutsu` — combo attack\n`$defend` — reduce incoming damage\n`$genjutsu` — accuracy pressure\n`$transformation` — stun risk/reward\n`$forfeit` — surrender", False)
-    add_field(page, "Jutsu", "`$jutsu` — clean jutsu library\n`$jutsu <page/search>` — page/search library outside combat\n`$jutsu <name>` — cast during combat\n`$learnjutsu <name>` — learn eligible jutsu\n`$myjutsu` — your known jutsu sorted weakest to strongest", False)
-    pages.append(page)
+    topic = (topic or "").lower().strip().replace("_", "-")
 
-    page = ui_embed("Laentaru Help — Villages & World", "Village expansion, wars, bounties, and events.", "purple")
-    add_field(page, "Villages", "`$villages` — village list with levels\n`$joinvillage <name>` — join village\n`$village` — your village level/fund/rank\n`$villagedonate <amount>` — donate to village fund\n`$villageleaderboard` — village rankings\n`$villagewar <enemy>` — propose war vote\n`$warvote yes/no` — vote on war\n`$warstatus` — view 24-hour war scoreboards", False)
-    add_field(page, "World", "`$event` — join active event\n`$events` — active event status\n`$bounty @user <amount>` — place bounty\n`$claimbounty @user` — claim bounty after defeating target\n`$lottery` — lottery status\n`$ticket [amount]` — buy tickets", False)
-    pages.append(page)
+    categories = {
+        "start": {
+            "aliases": ["profile", "beginner", "new", "account"],
+            "title": "Laentaru Help — Start & Profile",
+            "tone": "brand",
+            "description": "Create your shinobi, roll your build, and inspect your character.",
+            "fields": [
+                ("Getting Started", [
+                    ("$start", "create your player profile"),
+                    ("$roll", "roll clan, stats, chakra nature, and possible bloodline"),
+                    ("$reroll", "reroll your character if you have rerolls left"),
+                    ("$profile [user]", "view your profile or inspect another player"),
+                    ("$progress", "view your MMORPG progression path"),
+                    ("$mmorpg", "alias for $progress"),
+                ]),
+                ("Build Inspection", [
+                    ("$build", "view your class/role identity"),
+                    ("$buildanalysis", "deeper build strengths and weaknesses"),
+                    ("$compare @user", "compare your build against another player"),
+                    ("$stats", "view combat/scaling explanation"),
+                    ("$rank", "show your current rank card"),
+                    ("$ladder", "view leaderboard rankings"),
+                ]),
+            ],
+        },
+        "progression": {
+            "aliases": ["level", "xp", "train", "training", "daily"],
+            "title": "Laentaru Help — Progression",
+            "tone": "success",
+            "description": "Level slowly, build intentionally, and avoid runaway stat inflation.",
+            "fields": [
+                ("Training & Cooldowns", [
+                    ("$train [stat]", "train generally or focus Health, Stamina, Durability, Chakra, etc."),
+                    ("$cooldowns", "show timers for training, daily, weekly, missions, and more"),
+                    ("$daily", "claim daily reward"),
+                    ("$weekly", "claim weekly reward"),
+                    ("$streak", "view daily/weekly streak progress"),
+                ]),
+                ("Missions", [
+                    ("$missions", "open the mission board"),
+                    ("$mission <name>", "attempt a mission for XP, Ryo, and possible rewards"),
+                ]),
+            ],
+        },
+        "combat": {
+            "aliases": ["pvp", "duel", "fight", "battle", "jutsu"],
+            "title": "Laentaru Help — Combat & Jutsu",
+            "tone": "danger",
+            "description": "Turn-based PvP, resources, jutsu, statuses, and build strategy.",
+            "fields": [
+                ("Duel Flow", [
+                    ("$duel @user", "challenge another player"),
+                    ("$accept", "accept a duel"),
+                    ("$deny", "deny a duel"),
+                    ("$forfeit", "surrender an active duel"),
+                ]),
+                ("Combat Actions", [
+                    ("$attack", "basic reliable attack"),
+                    ("$heavy", "stronger hit with higher risk/cost"),
+                    ("$taijutsu", "combo-style physical pressure"),
+                    ("$defend", "guard and reduce incoming damage"),
+                    ("$genjutsu", "apply accuracy/control pressure"),
+                    ("$transformation", "risk/reward stun tool"),
+                    ("$jutsu <name>", "cast a known jutsu during combat"),
+                ]),
+                ("Jutsu Library", [
+                    ("$jutsu", "browse the jutsu library"),
+                    ("$jutsu <page/search>", "page or search jutsu outside combat"),
+                    ("$learnjutsu <name>", "learn an eligible jutsu"),
+                    ("$myjutsu", "view your learned jutsu sorted by power"),
+                ]),
+            ],
+        },
+        "ranked": {
+            "aliases": ["elo", "ladder", "season-pvp", "rankedpvp"],
+            "title": "Laentaru Help — Ranked PvP",
+            "tone": "gold",
+            "description": "Seasonal PvP progression, ratings, divisions, and competitive rewards.",
+            "fields": [
+                ("Ranked", [
+                    ("$ranked", "view your ranked rating, record, and division"),
+                    ("$duel @user", "ranked-ready combat foundation"),
+                    ("$ladder", "view public rankings"),
+                    ("$season", "view the current season and rewards"),
+                ]),
+                ("Tip", [
+                    ("Build roles", "Guardian, Assassin, Controller, Medic, and Striker builds should win differently"),
+                ]),
+            ],
+        },
+        "equipment": {
+            "aliases": ["gear", "items", "inventory", "item"],
+            "title": "Laentaru Help — Equipment & Inventory",
+            "tone": "purple",
+            "description": "Manage items, gear slots, and passive build effects.",
+            "fields": [
+                ("Inventory", [
+                    ("$inventory", "view owned items"),
+                    ("$items", "browse item registry"),
+                    ("$iteminfo <item>", "view item description and use cases"),
+                    ("$use <item> [qty]", "use one or more items"),
+                ]),
+                ("Equipment", [
+                    ("$equipment", "view equipped gear and passive bonuses"),
+                    ("$equip <item>", "equip a gear item if it has an equipment slot"),
+                ]),
+            ],
+        },
+        "world": {
+            "aliases": ["events", "boss", "worldboss", "raid", "raids"],
+            "title": "Laentaru Help — World Content",
+            "tone": "info",
+            "description": "Server events, raids, bosses, and repeatable world activities.",
+            "fields": [
+                ("Events & Bosses", [
+                    ("$event", "join the active world event"),
+                    ("$events", "view active event status"),
+                    ("$worldboss", "view or fight the server-wide world boss"),
+                    ("$boss", "alias for $worldboss"),
+                ]),
+                ("Raids", [
+                    ("$raid", "view raid help/status"),
+                    ("$raid start <name>", "start a raid if available"),
+                    ("$raid join", "join the active raid"),
+                    ("$raid attack", "attack during the raid"),
+                    ("$raid status", "view raid phase, HP, and party status"),
+                ]),
+            ],
+        },
+        "village": {
+            "aliases": ["villages", "war", "wars", "politics", "election", "research"],
+            "title": "Laentaru Help — Villages & Politics",
+            "tone": "purple",
+            "description": "Village progression, donations, wars, elections, taxes, and research.",
+            "fields": [
+                ("Village Basics", [
+                    ("$villages", "list villages and bonuses"),
+                    ("$joinvillage <name>", "join a village"),
+                    ("$village", "view your village status"),
+                    ("$villagehub", "open the village command hub"),
+                    ("$villagedonate <amount>", "donate Ryo to your village fund"),
+                    ("$villageleaderboard", "rank villages by progress"),
+                ]),
+                ("Wars", [
+                    ("$villagewar <enemy>", "propose a 24-hour village war"),
+                    ("$warvote yes/no", "vote on war proposal"),
+                    ("$warstatus", "view active village war scoreboards"),
+                ]),
+                ("Politics", [
+                    ("$villageelect", "view/start Kage election flow"),
+                    ("$villagetax", "view village tax settings"),
+                    ("$villageresearch", "view or progress village research"),
+                ]),
+            ],
+        },
+        "economy": {
+            "aliases": ["market", "auction", "ah", "trade", "money", "ryo", "gacha", "summon"],
+            "title": "Laentaru Help — Economy",
+            "tone": "gold",
+            "description": "Ryo, trading, marketplace, auction house, lottery, and summons.",
+            "fields": [
+                ("Wallet & Trading", [
+                    ("$balance", "view your Ryo balance"),
+                    ("$trade @user ryo <amount>", "offer Ryo trade"),
+                    ("$trade @user item <qty> <item>", "offer item trade"),
+                    ("$accepttrade", "accept pending trade"),
+                    ("$denytrade", "deny pending trade"),
+                    ("$canceltrade", "cancel your pending trade"),
+                ]),
+                ("Auction House 2.0", [
+                    ("$auction", "view auction help"),
+                    ("$auction sell <item> <price> [qty]", "list an item"),
+                    ("$auction buy <id>", "buy a listing"),
+                    ("$auction search <term>", "search listings"),
+                    ("$auction cancel <id>", "cancel your listing"),
+                ]),
+                ("Gacha & Lottery", [
+                    ("$gacha", "summon system overview"),
+                    ("$banner", "view current banner/rates"),
+                    ("$rarities", "view rarity pull rates"),
+                    ("$summon", "single summon"),
+                    ("$summon multi", "multi summon"),
+                    ("$lottery", "view lottery status"),
+                    ("$ticket [amount]", "buy lottery tickets"),
+                ]),
+            ],
+        },
+        "professions": {
+            "aliases": ["profession", "gather", "work", "crafting", "craft"],
+            "title": "Laentaru Help — Professions",
+            "tone": "success",
+            "description": "Non-combat MMORPG progression for materials, work, and future crafting.",
+            "fields": [
+                ("Professions", [
+                    ("$professions", "view your profession levels and XP"),
+                    ("$gather <profession>", "gather materials and gain profession XP"),
+                    ("$work <profession>", "alias for $gather"),
+                ]),
+                ("Examples", [
+                    ("$gather mining", "mine materials"),
+                    ("$gather fishing", "fish for resources"),
+                    ("$gather crafting", "progress crafting-style work"),
+                ]),
+            ],
+        },
+        "collection": {
+            "aliases": ["titles", "cosmetics", "title", "collectibles"],
+            "title": "Laentaru Help — Titles & Cosmetics",
+            "tone": "info",
+            "description": "Horizontal progression rewards that flex status without breaking balance.",
+            "fields": [
+                ("Titles", [
+                    ("$titles", "view unlocked titles/cosmetics"),
+                    ("$title <name>", "equip an unlocked title"),
+                ]),
+                ("Why it matters", [
+                    ("Cosmetics", "reward long-term play without adding power creep"),
+                ]),
+            ],
+        },
+        "bloodlines": {
+            "aliases": ["kekkei", "dojutsu", "evolution", "evolutions", "clans"],
+            "title": "Laentaru Help — Clans & Bloodlines",
+            "tone": "danger",
+            "description": "Clan identity, Kekkei Genkai, dojutsu, and evolution paths.",
+            "fields": [
+                ("Registries", [
+                    ("$clans", "view clan registry"),
+                    ("$kekkei", "view bloodline/dojutsu registry"),
+                    ("$evolutions [bloodline]", "view evolution path"),
+                ]),
+                ("Progression", [
+                    ("$evolve [bloodline]", "attempt to evolve one owned bloodline"),
+                    ("$myjutsu", "view learned bloodline and normal jutsu"),
+                ]),
+            ],
+        },
+        "bounty": {
+            "aliases": ["bounties", "hunter", "hunts"],
+            "title": "Laentaru Help — Bounties",
+            "tone": "danger",
+            "description": "Put money on targets and claim rewards after defeating them.",
+            "fields": [
+                ("Bounty System", [
+                    ("$bounty @user <amount>", "place a bounty on a player"),
+                    ("$claimbounty @user", "claim bounty after defeating the target"),
+                ]),
+            ],
+        },
+        "tournament": {
+            "aliases": ["tourny", "tourney", "bracket"],
+            "title": "Laentaru Help — Tournaments",
+            "tone": "gold",
+            "description": "Bracket-style PvP events.",
+            "fields": [
+                ("Tournament", [
+                    ("$tournament", "view active tournament status"),
+                    ("$jointournament", "join an active tournament signup"),
+                ]),
+            ],
+        },
+    }
 
-    page = ui_embed("Laentaru Help — Economy & Trading", "Player trading, market, and summons.", "gold")
-    add_field(page, "Trading", "`$trade @user ryo <amount>` — offer ryo trade\n`$trade @user item <qty> <item>` — offer item trade\n`$accepttrade` / `$denytrade` / `$canceltrade` — manage trades", False)
-    add_field(page, "Market", "`$market` — browse listings\n`$market <search>` — search listings\n`$market sell <item> <price> [amount]` — list item\n`$market buy <ID>` — buy listing\n`$market cancel <ID>` — cancel listing\n`$market mine` — your listings\n`$market history` — recent sales/cancels", False)
-    add_field(page, "Gacha", "`$gacha` — summon info\n`$banner` — current banner\n`$rarities` — pull rates\n`$summon` / `$summon multi` — pull rewards", False)
-    pages.append(page)
+    alias_to_key = {}
+    for key, data in categories.items():
+        alias_to_key[key] = key
+        for alias in data.get("aliases", []):
+            alias_to_key[alias] = key
 
-    page = ui_embed("Laentaru Help — Content Guides", "Registries and explanation commands.", "info")
-    add_field(page, "Content", "`$clans` — clan registry\n`$kekkei` — bloodline/dojutsu list\n`$evolutions [bloodline]` — evolution path\n`$evolve [bloodline]` — evolve bloodline\n`$info` — system overview\n`$tournament` — tournament status\n`$jointournament` — join active tournament", False)
-    add_field(page, "Paging", "Use the emoji reactions under this message: ⬅️ previous, ➡️ next, ⏹️ stop.", False)
-    pages.append(page)
+    if topic:
+        key = alias_to_key.get(topic)
+        if not key:
+            page = make_page("Laentaru Help — Unknown Category", f"No help category found for `{topic}`.", "warning")
+            add_field(page, "Available Categories", "`" + "`, `".join(categories.keys()) + "`", False)
+            await ctx.send(embed=page)
+            return
+
+        data = categories[key]
+        page = make_page(data["title"], data["description"], data["tone"])
+        for name, entries in data["fields"]:
+            add_field(page, name, command_block(entries), False)
+        add_field(page, "Related", "Use `$help` for all categories or `$help <category>` for a focused page.", False)
+        await ctx.send(embed=page)
+        return
+
+    overview = make_page(
+        "Laentaru Help — Command Center",
+        "Choose a category with reactions, or use `$help <category>` for a focused guide. Developer/private commands are hidden.",
+        "brand",
+    )
+    add_field(overview, "Core", "`$help start` • `$help progression` • `$help combat` • `$help equipment`", False)
+    add_field(overview, "MMORPG", "`$help world` • `$help raid` • `$help village` • `$help professions` • `$help ranked`", False)
+    add_field(overview, "Economy & Collection", "`$help economy` • `$help auction` • `$help titles` • `$help bloodlines` • `$help bounty`", False)
+    add_field(overview, "Fast Start", "1. `$start`\n2. `$roll`\n3. `$profile`\n4. `$train`\n5. `$progress`", False)
+
+    pages = [overview]
+    page_order = ["start", "progression", "combat", "equipment", "world", "village", "economy", "professions", "ranked", "collection", "bloodlines", "bounty", "tournament"]
+    for key in page_order:
+        data = categories[key]
+        page = make_page(data["title"], data["description"], data["tone"])
+        for name, entries in data["fields"]:
+            add_field(page, name, command_block(entries), False)
+        pages.append(page)
 
     await send_paginated_embeds(ctx, pages)
 
