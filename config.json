@@ -1,5 +1,5 @@
 {
-    "TRAINING_COOLDOWN_MINUTES": 15,
+    "TRAINING_COOLDOWN_MINUTES": 10,
     "DUEL_DURATION_SECONDS": 30,
     "DUEL_ROUND_DELAY_SECONDS": 1.5,
     "BASE_STATS": {
@@ -1132,8 +1132,8 @@
         "Kage-Level"
     ],
     "LEVELS_PER_RANK": 15,
-    "XP_BASE": 300,
-    "XP_EXPONENT": 1.68,
+    "XP_BASE": 220,
+    "XP_EXPONENT": 1.55,
     "SKILL_SCORE": {
         "level_multiplier_per_level": 0.035,
         "kekkei_bonus": 1500,
@@ -1141,29 +1141,29 @@
         "extra_chakra_nature_bonus": 300
     },
     "LEVEL_UP": {
-        "stat_gain_min": 1,
-        "stat_gain_max": 3,
-        "affinity_gain_min": 4,
-        "affinity_gain_max": 16,
-        "normal_affinity_cap": 8500,
+        "stat_gain_min": 2,
+        "stat_gain_max": 5,
+        "affinity_gain_min": 10,
+        "affinity_gain_max": 28,
+        "normal_affinity_cap": 9500,
         "scale_break_chance": 1,
-        "scale_break_roll_max": 250,
-        "scale_break_gain_min": 15,
-        "scale_break_gain_max": 80,
+        "scale_break_roll_max": 150,
+        "scale_break_gain_min": 25,
+        "scale_break_gain_max": 120,
         "chakra_nature_unlock_levels": [
-            20,
-            40,
-            65,
-            90
+            15,
+            30,
+            50,
+            75
         ]
     },
     "TRAINING": {
-        "xp_min": 8,
-        "xp_max": 20,
+        "xp_min": 25,
+        "xp_max": 55,
         "stat_gain_min": 1,
-        "stat_gain_max": 1,
+        "stat_gain_max": 3,
         "item_drop_chance": 1,
-        "item_drop_roll_max": 18
+        "item_drop_roll_max": 10
     },
     "PVP": {
         "min_hit_chance": 0.55,
@@ -1266,30 +1266,30 @@
             "hp_per_difficulty": 90,
             "base_power": 5200,
             "power_per_difficulty": 1700,
-            "base_xp": 40,
-            "xp_per_difficulty": 20,
-            "base_item_reward_chance": 10,
-            "item_reward_chance_per_difficulty": 3,
-            "max_item_reward_chance": 55,
-            "base_win_chance": 0.46,
+            "base_xp": 70,
+            "xp_per_difficulty": 35,
+            "base_item_reward_chance": 16,
+            "item_reward_chance_per_difficulty": 5,
+            "max_item_reward_chance": 70,
+            "base_win_chance": 0.52,
             "power_difference_weight": 0.28,
-            "min_win_chance": 0.18,
-            "max_win_chance": 0.86
+            "min_win_chance": 0.22,
+            "max_win_chance": 0.9
         },
         "beast": {
             "base_hp": 380,
             "hp_per_difficulty": 175,
             "base_power": 10500,
             "power_per_difficulty": 2800,
-            "base_xp": 63,
-            "xp_per_difficulty": 31,
-            "base_item_reward_chance": 22,
-            "item_reward_chance_per_difficulty": 4,
-            "max_item_reward_chance": 55,
-            "base_win_chance": 0.24,
+            "base_xp": 125,
+            "xp_per_difficulty": 60,
+            "base_item_reward_chance": 30,
+            "item_reward_chance_per_difficulty": 6,
+            "max_item_reward_chance": 70,
+            "base_win_chance": 0.3,
             "power_difference_weight": 0.26,
-            "min_win_chance": 0.05,
-            "max_win_chance": 0.68
+            "min_win_chance": 0.08,
+            "max_win_chance": 0.72
         }
     },
     "NATURE_ROLL_WEIGHTS": {
@@ -1303,9 +1303,9 @@
     },
     "TRAINING_KEKKEI": {
         "enabled": true,
-        "general_roll_max": 450,
+        "general_roll_max": 300,
         "general_success_value": 1,
-        "dojutsu_roll_max": 750,
+        "dojutsu_roll_max": 550,
         "dojutsu_success_value": 1,
         "general_pool": [
             "Wood Release",
@@ -1342,9 +1342,9 @@
     },
     "SHARINGAN": {
         "enabled": true,
-        "training_level_chance": 1,
-        "fight_level_chance": 2,
-        "roll_max": 150,
+        "training_level_chance": 2,
+        "fight_level_chance": 4,
+        "roll_max": 120,
         "levels": [
             "One Tomoe Sharingan",
             "Two Tomoe Sharingan",
@@ -1354,14 +1354,14 @@
         ],
         "max_level_index": 3,
         "skill_bonus_per_level": 250,
-        "genjutsu_bonus_per_level": 90,
-        "chakra_control_bonus_per_level": 65,
-        "speed_bonus_per_level": 45
+        "genjutsu_bonus_per_level": 120,
+        "chakra_control_bonus_per_level": 85,
+        "speed_bonus_per_level": 60
     },
     "RANDOM_EVENTS": {
         "enabled": true,
         "channel_id": 1501257462727311572,
-        "interval_seconds": 5400,
+        "interval_seconds": 3600,
         "event_duration_seconds": 120,
         "weighted_events": {
             "xp": 25,
@@ -1370,11 +1370,11 @@
             "cursemark": 12
         },
         "xp_values": [
-            40,
-            60,
-            80,
+            75,
             100,
-            125
+            125,
+            175,
+            250
         ],
         "shinobi_difficulties": [
             1,
@@ -2545,17 +2545,17 @@
         "starting_ryo": 0,
         "daily_ryo_min": 75,
         "daily_ryo_max": 150,
-        "daily_xp_min": 20,
-        "daily_xp_max": 45,
+        "daily_xp_min": 45,
+        "daily_xp_max": 90,
         "daily_streak_bonus_ryo": 15,
-        "daily_streak_bonus_xp": 8,
+        "daily_streak_bonus_xp": 12,
         "daily_streak_cap": 14,
         "weekly_ryo_min": 450,
         "weekly_ryo_max": 900,
-        "weekly_xp_min": 110,
-        "weekly_xp_max": 230,
+        "weekly_xp_min": 250,
+        "weekly_xp_max": 500,
         "weekly_streak_bonus_ryo": 100,
-        "weekly_streak_bonus_xp": 45,
+        "weekly_streak_bonus_xp": 65,
         "weekly_streak_cap": 8,
         "daily_cooldown_hours": 15,
         "daily_reset_grace_hours": 48,
@@ -2563,16 +2563,16 @@
         "weekly_reset_grace_hours": 240,
         "rare_item_daily_chance": 8,
         "rare_item_weekly_chance": 35,
-        "training_ryo_min": 6,
-        "training_ryo_max": 16,
-        "combat_win_ryo_min": 15,
-        "combat_win_ryo_max": 40,
-        "event_xp_ryo_min": 10,
-        "event_xp_ryo_max": 35,
-        "shinobi_event_ryo_min": 35,
-        "shinobi_event_ryo_max": 85,
-        "beast_event_ryo_min": 100,
-        "beast_event_ryo_max": 225
+        "training_ryo_min": 12,
+        "training_ryo_max": 30,
+        "combat_win_ryo_min": 30,
+        "combat_win_ryo_max": 75,
+        "event_xp_ryo_min": 25,
+        "event_xp_ryo_max": 70,
+        "shinobi_event_ryo_min": 75,
+        "shinobi_event_ryo_max": 165,
+        "beast_event_ryo_min": 180,
+        "beast_event_ryo_max": 400
     },
     "SCALING": {
         "enabled": true,
@@ -4311,13 +4311,13 @@
     },
     "MISSIONS": {
         "enabled": true,
-        "default_cooldown_minutes": 60,
+        "default_cooldown_minutes": 45,
         "base_success": 0.55,
         "power_weight": 0.28,
         "min_success": 0.18,
         "max_success": 0.92,
-        "fail_xp": 5,
-        "fail_ryo": 5,
+        "fail_xp": 10,
+        "fail_ryo": 10,
         "missions": {
             "lost_cat": {
                 "name": "Find the Lost Cat",
@@ -4328,12 +4328,12 @@
                 "rank": "D",
                 "level": 1,
                 "power": 1200,
-                "xp_min": 10,
-                "xp_max": 15,
+                "xp_min": 18,
+                "xp_max": 27,
                 "ryo_min": 35,
                 "ryo_max": 80,
-                "cooldown_minutes": 60,
-                "item_chance": 3,
+                "cooldown_minutes": 45,
+                "item_chance": 4,
                 "items": [
                     "Kunai",
                     "Shuriken"
@@ -4348,12 +4348,12 @@
                 "rank": "C",
                 "level": 3,
                 "power": 4500,
-                "xp_min": 17,
-                "xp_max": 31,
+                "xp_min": 31,
+                "xp_max": 56,
                 "ryo_min": 90,
                 "ryo_max": 175,
-                "cooldown_minutes": 121,
-                "item_chance": 7,
+                "cooldown_minutes": 91,
+                "item_chance": 9,
                 "items": [
                     "Smoke Bomb",
                     "Basic Chakra Pill"
@@ -4368,12 +4368,12 @@
                 "rank": "C",
                 "level": 5,
                 "power": 6500,
-                "xp_min": 24,
-                "xp_max": 42,
+                "xp_min": 43,
+                "xp_max": 76,
                 "ryo_min": 130,
                 "ryo_max": 240,
-                "cooldown_minutes": 181,
-                "item_chance": 11,
+                "cooldown_minutes": 136,
+                "item_chance": 14,
                 "items": [
                     "Training Weights",
                     "Scroll Fragment"
@@ -4388,12 +4388,12 @@
                 "rank": "B",
                 "level": 10,
                 "power": 10500,
-                "xp_min": 42,
-                "xp_max": 66,
+                "xp_min": 76,
+                "xp_max": 119,
                 "ryo_min": 250,
                 "ryo_max": 425,
-                "cooldown_minutes": 364,
-                "item_chance": 18,
+                "cooldown_minutes": 273,
+                "item_chance": 22,
                 "items": [
                     "Scroll Fragment",
                     "Forbidden Scroll Page"
@@ -4408,12 +4408,12 @@
                 "rank": "A",
                 "level": 18,
                 "power": 17500,
-                "xp_min": 73,
-                "xp_max": 123,
+                "xp_min": 131,
+                "xp_max": 221,
                 "ryo_min": 450,
                 "ryo_max": 850,
-                "cooldown_minutes": 729,
-                "item_chance": 26,
+                "cooldown_minutes": 547,
+                "item_chance": 32,
                 "items": [
                     "Forbidden Scroll Page",
                     "Tailed Beast Chakra Fragment"
@@ -4428,12 +4428,12 @@
                 "rank": "S",
                 "level": 30,
                 "power": 30000,
-                "xp_min": 158,
-                "xp_max": 264,
+                "xp_min": 284,
+                "xp_max": 475,
                 "ryo_min": 1000,
                 "ryo_max": 1800,
-                "cooldown_minutes": 1458,
-                "item_chance": 39,
+                "cooldown_minutes": 1094,
+                "item_chance": 49,
                 "items": [
                     "Tailed Beast Chakra Fragment",
                     "Forbidden Scroll Page"
@@ -4524,16 +4524,16 @@
         ]
     },
     "PROGRESSION": {
-        "max_levels_per_xp_gain": 1,
+        "max_levels_per_xp_gain": 2,
         "cap_overflow_xp_after_level": true,
-        "training_daily_soft_cap": 6,
-        "training_fatigue_per_extra_session": 0.1,
-        "training_min_fatigue_multiplier": 0.35,
+        "training_daily_soft_cap": 10,
+        "training_fatigue_per_extra_session": 0.06,
+        "training_min_fatigue_multiplier": 0.55,
         "show_progression_tips": true,
         "horizontal_progression_starts_level": 35,
         "prestige_unlock_level": 80,
         "max_level": 100,
-        "xp_curve_note": "MMORPG pacing: slower levels, harder caps, more horizontal systems."
+        "xp_curve_note": "Easier MMORPG pacing: faster early/midgame levels, stronger training, better event rewards, and controlled multi-level gains."
     },
     "MMORPG_ROLES": {
         "striker": {
