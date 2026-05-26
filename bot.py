@@ -957,6 +957,27 @@ def find_inventory_item(player, search_text):
     return None
 
 
+def get_inventory_qty(player, item_name):
+    """Returns a safe integer quantity for an item in a player's inventory."""
+    inventory = player.get("inventory", {})
+    if not isinstance(inventory, dict):
+        return 0
+    try:
+        return max(0, int(inventory.get(item_name, 0) or 0))
+    except Exception:
+        return 0
+
+
+def player_owns_item(player, item_name, amount=1):
+    """Strict ownership check used before equipment, market, crafting, and item use flows."""
+    if not item_name:
+        return False
+    owned_name = find_inventory_item(player, item_name)
+    if not owned_name:
+        return False
+    return get_inventory_qty(player, owned_name) >= max(1, int(amount or 1))
+
+
 def get_lottery_total_tickets(state):
     return sum(int(amount or 0) for amount in state.get("tickets", {}).values())
 
@@ -5151,25 +5172,36 @@ async def equip(ctx, *, item_name: str = None):
     if not item_name:
         await send_notice(ctx, "Equip Item", "Use `$equip [equipment item]`. Example: `$equip ANBU Mask`", "info")
         return
+
     players = migrate_all_players(load_players())
     user_id = str(ctx.author.id)
     if user_id not in players:
         await send_notice(ctx, "Profile Required", "Use `$start` first.", "warning")
         return
+
     player = players[user_id]
     matched, data = find_equipment_item(item_name)
     if not matched:
         await send_notice(ctx, "Not Equipment", "That item is not configured as equipment.", "warning")
         return
+
+    slot = data.get("slot")
+    if not slot or slot not in get_equipment_config().get("slots", []):
+        await send_notice(ctx, "Equipment Slot Error", f"**{matched}** does not have a valid equipment slot configured.", "danger")
+        return
+
     owned_name = find_inventory_item(player, matched)
-    if not owned_name:
+    if not owned_name or get_inventory_qty(player, owned_name) <= 0:
         await send_notice(ctx, "Item Missing", f"You need **{matched}** in your inventory before equipping it.", "warning")
         return
-    slot = data.get("slot")
+
+    # Do not consume gear on equip. The item must simply exist with quantity >= 1.
     player.setdefault("equipment", {})[slot] = matched
     player["hidden_skill_score"] = calculate_hidden_skill_score(player)
     save_players(players)
+
     embed = ui_embed("Equipment Updated", f"Equipped **{matched}** in the **{slot}** slot.", "success")
+    add_field(embed, "Owned", f"Inventory quantity: **{fmt_num(get_inventory_qty(player, owned_name))}**", True)
     add_field(embed, "Current Gear", format_equipment_summary(player), False)
     await ctx.send(embed=embed)
 
@@ -5509,29 +5541,116 @@ async def raid(ctx, action: str = None, *, raid_name: str = None):
     await ctx.send(embed=embed)
 
 
+def resolve_world_boss_rewards(players, state):
+    """Pays rewards once when the world boss reaches 0 HP."""
+    cfg = get_world_boss_config()
+    if state.get("rewards_paid"):
+        return []
+
+    damage_map = state.get("damage", {}) or {}
+    ranked = sorted(damage_map.items(), key=lambda x: int(x[1] or 0), reverse=True)
+    if not ranked:
+        state["rewards_paid"] = True
+        state["defeated_at"] = now_utc().isoformat()
+        state["active"] = False
+        return []
+
+    participant_xp = int(cfg.get("defeat_participant_xp", cfg.get("base_reward_xp", 80)))
+    participant_ryo = int(cfg.get("defeat_participant_ryo", 250))
+    top_xp = int(cfg.get("top_reward_xp", 300))
+    top_ryo = int(cfg.get("top_reward_ryo", 750))
+    top_items = cfg.get("top_reward_items", []) or []
+    participant_items = cfg.get("participant_reward_items", []) or []
+    item_chance = int(cfg.get("participant_item_chance", 15))
+
+    reward_lines = []
+    for rank, (uid, dmg) in enumerate(ranked, start=1):
+        player = players.get(str(uid))
+        if not player:
+            continue
+
+        xp = participant_xp
+        ryo = participant_ryo
+        drops = []
+
+        if rank == 1:
+            xp += top_xp
+            ryo += top_ryo
+            if top_items:
+                drop = random.choice(top_items)
+                add_item(player, drop)
+                drops.append(drop)
+            grant_title(player, "World Boss Slayer") if "grant_title" in globals() else None
+        elif participant_items and random.randint(1, 100) <= item_chance:
+            drop = random.choice(participant_items)
+            add_item(player, drop)
+            drops.append(drop)
+
+        add_xp(player, xp)
+        player["ryo"] = int(player.get("ryo", 0)) + ryo
+        player["world_boss_kills"] = int(player.get("world_boss_kills", 0)) + 1
+        player["hidden_skill_score"] = calculate_hidden_skill_score(player)
+        reward_lines.append(
+            f"#{rank} <@{uid}> — {fmt_num(dmg)} damage | +{fmt_num(xp)} XP | +{fmt_num(ryo)} Ryo"
+            + (f" | Drop: **{', '.join(drops)}**" if drops else "")
+        )
+
+    state["active"] = False
+    state["hp"] = 0
+    state["rewards_paid"] = True
+    state["defeated_at"] = now_utc().isoformat()
+    return reward_lines
+
+
 @bot.command(name="worldboss", aliases=["boss"])
 async def worldboss(ctx, action: str = None):
     players = migrate_all_players(load_players())
     state = load_world_boss_state()
     cfg = get_world_boss_config()
-    if action and action.lower() == "reset" and ctx.author.id in DEV_USER_IDS:
+
+    action = (action or "status").lower()
+
+    if action == "reset" and ctx.author.id in DEV_USER_IDS:
         state = get_default_world_boss_state()
         save_world_boss_state(state)
-    if not action or action.lower() in ["status", "reset"]:
-        embed = ui_embed("World Boss", f"**{state.get('name')}** is active.", "danger")
+        await send_notice(ctx, "World Boss Reset", f"**{state.get('name')}** has respawned with **{fmt_num(state.get('hp', 0))} HP**.", "success")
+        return
+
+    if action in ["status", "reset"]:
+        active = bool(state.get("active", True)) and int(state.get("hp", 0)) > 0
+        title = "World Boss" if active else "World Boss Defeated"
+        desc = f"**{state.get('name')}** is {'active' if active else 'defeated'}."
+        embed = ui_embed(title, desc, "danger" if active else "neutral")
         add_field(embed, "Health", resource_line("HP", int(state.get("hp", 0)), int(state.get("max_hp", cfg.get("hp", 1)))), False)
         top = sorted(state.get("damage", {}).items(), key=lambda x: int(x[1]), reverse=True)[:5]
         add_field(embed, "Top Damage", "\n".join(f"<@{uid}> — {fmt_num(dmg)}" for uid, dmg in top) or "No damage yet.", False)
-        add_field(embed, "Attack", "Use `$worldboss attack` every cooldown window to contribute damage.", False)
+        if active:
+            add_field(embed, "Attack", "Use `$worldboss attack` every cooldown window to contribute damage.", False)
+        else:
+            add_field(embed, "Next Step", "Developers can use `$worldboss reset` to start a new boss cycle.", False)
         await ctx.send(embed=embed)
         return
-    if action.lower() != "attack":
+
+    if action != "attack":
         await send_notice(ctx, "World Boss", "Use `$worldboss`, `$worldboss attack`, or `$worldboss reset` as a developer.", "info")
         return
+
+    if not bool(state.get("active", True)) or int(state.get("hp", 0)) <= 0:
+        reward_lines = resolve_world_boss_rewards(players, state)
+        save_players(players)
+        save_world_boss_state(state)
+        embed = ui_embed("World Boss Already Defeated", f"**{state.get('name')}** has already been defeated.", "neutral")
+        if reward_lines:
+            add_field(embed, "Rewards Paid", "\n".join(reward_lines[:10]), False)
+        add_field(embed, "Next Step", "Developers can use `$worldboss reset` to start a new boss cycle.", False)
+        await ctx.send(embed=embed)
+        return
+
     user_id = str(ctx.author.id)
     if user_id not in players or not players[user_id].get("has_rolled"):
         await send_notice(ctx, "Profile Required", "Use `$start` and `$roll` before fighting the world boss.", "warning")
         return
+
     player = players[user_id]
     last_key = "last_world_boss_attack"
     last = player.get(last_key)
@@ -5544,6 +5663,7 @@ async def worldboss(ctx, action: str = None):
                 return
         except Exception:
             pass
+
     boss_bonus = get_equipment_passives(player).get("world_boss_damage", 0) if "get_equipment_passives" in globals() else 0
     damage = max(25, int(calculate_combat_rating(player) * random.uniform(0.055, 0.095) * (1 + boss_bonus)))
     state["hp"] = max(0, int(state.get("hp", 0)) - damage)
@@ -5551,23 +5671,22 @@ async def worldboss(ctx, action: str = None):
     player["world_boss_damage"] = int(player.get("world_boss_damage", 0)) + damage
     player[last_key] = now_utc().isoformat()
     add_xp(player, int(cfg.get("base_reward_xp", 80)))
-    defeated = state["hp"] <= 0
+
+    defeated = int(state.get("hp", 0)) <= 0
+    reward_lines = []
     if defeated:
-        state["active"] = False
-        top = sorted(state.get("damage", {}).items(), key=lambda x: int(x[1]), reverse=True)
-        if top:
-            top_id = top[0][0]
-            if top_id in players:
-                add_xp(players[top_id], int(cfg.get("top_reward_xp", 300)))
-                pool = cfg.get("top_reward_items", [])
-                if pool:
-                    add_item(players[top_id], random.choice(pool))
+        reward_lines = resolve_world_boss_rewards(players, state)
+
     save_players(players)
     save_world_boss_state(state)
+
     embed = ui_embed("World Boss Attack", f"{ctx.author.mention} dealt **{fmt_num(damage)}** damage to **{state.get('name')}**.", "danger")
     add_field(embed, "Boss HP", resource_line("HP", int(state.get("hp", 0)), int(state.get("max_hp", 1))), False)
     if defeated:
-        add_field(embed, "Boss Defeated", "The world boss has been defeated. Developers can use `$worldboss reset` to start a new cycle.", False)
+        add_field(embed, "Boss Defeated", "The world boss has been defeated and rewards have been paid.", False)
+        if reward_lines:
+            add_field(embed, "Rewards", "\n".join(reward_lines[:10]), False)
+        add_field(embed, "Next Step", "Developers can use `$worldboss reset` to start a new cycle.", False)
     await ctx.send(embed=embed)
 
 
